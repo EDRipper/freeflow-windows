@@ -22,16 +22,29 @@
     "@types/node": "^22.0.0",
     "electron": "^32.0.0",
     "electron-builder": "^25.0.0",
-    "esbuild": "^0.24.0",
+    "esbuild": "^0.24.2",
     "typescript": "^5.6.0"
   },
   "build": {
     "appId": "com.freeflow.windows",
     "productName": "FreeFlow",
-    "directories": { "output": "release", "buildResources": "resources" },
-    "files": ["dist/**/*", "package.json"],
+    "directories": {
+      "output": "release",
+      "buildResources": "resources"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "resources/icon.ico"
     },
     "nsis": {
