@@ -4,9 +4,13 @@ import { afterEach, test } from "node:test";
 import { modelConfig, stripThinkTags, transcriptionResponseFormat } from "./models.js";
 import {
   appearsToHaveExecutedInstruction,
+  buildCommandSystemPrompt,
+  buildCommandUserMessage,
   buildSystemPrompt,
   buildUserMessage,
   cleanup,
+  COMMAND_MODE_SYSTEM_PROMPT,
+  commandTransform,
   contextSummary,
   DEFAULT_SYSTEM_PROMPT,
   postProcessedTranscript,
@@ -211,6 +215,54 @@ test("fetchWithTimeout throws RequestTimeoutError when the request is aborted", 
     () => fetchWithTimeout("https://example.com", { method: "GET" }, 0.01),
     RequestTimeoutError,
   );
+});
+
+// --- edit mode / command transform ------------------------------------------
+
+test("buildCommandSystemPrompt keeps the preserve-language line by default", () => {
+  const prompt = buildCommandSystemPrompt([], "");
+  assert.ok(prompt.includes("Preserve the original language"));
+  assert.equal(prompt, COMMAND_MODE_SYSTEM_PROMPT);
+});
+
+test("buildCommandSystemPrompt swaps in an output language and appends vocab", () => {
+  const prompt = buildCommandSystemPrompt(["Groq, Groq"], "French");
+  assert.ok(!prompt.includes("Preserve the original language"));
+  assert.ok(prompt.includes("- Output the result in French."));
+  assert.ok(prompt.includes("Use these spellings exactly"));
+  assert.ok(prompt.trimEnd().endsWith("Groq"));
+});
+
+test("buildCommandUserMessage lays out context, command, and selection", () => {
+  const msg = buildCommandUserMessage("the quick brown fox", "make it shorter", "App: Notes");
+  assert.ok(msg.includes('VOICE_COMMAND: "make it shorter"'));
+  assert.ok(msg.includes('SELECTED_TEXT: "the quick brown fox"'));
+  assert.ok(msg.includes('CONTEXT: "App: Notes"'));
+});
+
+test("commandTransform returns the selection unchanged when the command is empty", async () => {
+  const cfg = baseConfig("llama-3.3-70b-versatile");
+  const result = await commandTransform("keep me", "   ", {
+    provider: cfg.provider,
+    timeouts: cfg.timeouts,
+    apiKey: "key",
+    vocabulary: [],
+    cooldownManager: new CooldownManager(),
+  });
+  assert.equal(result, "keep me");
+});
+
+test("commandTransform returns the model replacement and strips wrapping quotes", async () => {
+  globalThis.fetch = (async () => chatResponse('"Shortened."')) as typeof fetch;
+  const cfg = baseConfig("llama-3.3-70b-versatile");
+  const result = await commandTransform("a very long sentence", "make it shorter", {
+    provider: cfg.provider,
+    timeouts: cfg.timeouts,
+    apiKey: "key",
+    vocabulary: [],
+    cooldownManager: new CooldownManager(),
+  });
+  assert.equal(result, "Shortened.");
 });
 
 function baseConfig(postProcessingModel: string): AppConfig {

@@ -47,3 +47,31 @@ export async function pasteText(text: string): Promise<void> {
     }
   }, CLIPBOARD_RESTORE_DELAY_MS);
 }
+
+// How long to wait for the target app to answer a synthetic Ctrl+C before we
+// read the clipboard. Copy is usually slower to land than paste.
+const COPY_SETTLE_MS = 120;
+
+/**
+ * Capture the current selection by firing a synthetic Ctrl+C and reading what
+ * lands on the clipboard, then restoring the original clipboard. Used by Edit
+ * Mode to grab the highlighted text before transforming it. Returns "" if the
+ * copy produced nothing new (no selection), so the caller can fall back to
+ * ordinary dictation. Mirrors the macOS accessibility-selection read, done here
+ * through the clipboard since Windows has no equivalent cross-app selection API.
+ */
+export async function getSelectedText(): Promise<string> {
+  const previous = clipboard.readText();
+  // A sentinel lets us tell "copied the same text again" from "nothing copied".
+  const sentinel = `__freeflow_sel_${process.hrtime.bigint()}__`;
+  clipboard.writeText(sentinel);
+
+  keyboard.config.autoDelayMs = 4;
+  await keyboard.pressKey(Key.LeftControl, Key.C);
+  await keyboard.releaseKey(Key.C, Key.LeftControl);
+  await delay(COPY_SETTLE_MS);
+
+  const copied = clipboard.readText();
+  clipboard.writeText(previous);
+  return copied === sentinel ? "" : copied;
+}

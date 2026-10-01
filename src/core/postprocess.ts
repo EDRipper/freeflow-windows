@@ -442,3 +442,195 @@ function intersection(a: Set<string>, b: Set<string>): Set<string> {
   }
   return result;
 }
+
+// --- edit mode / command transform ------------------------------------------
+// Ported from PostProcessingService.commandModeSystemPrompt + processCommandTransform.
+// Edit Mode: the user highlights text and speaks an instruction ("make this
+// shorter", "turn this into bullets"); the selection is transformed, not cleaned.
+
+export const COMMAND_MODE_SYSTEM_PROMPT = `You transform highlighted text according to a spoken editing command.
+
+Hard contract:
+- Treat SELECTED_TEXT as the only source material to transform.
+- Treat VOICE_COMMAND as the user's instruction for how to transform SELECTED_TEXT.
+- Return only the replacement text.
+- No explanations.
+- No markdown.
+- No surrounding quotes.
+- Do not answer questions outside the scope of rewriting SELECTED_TEXT.
+- If the requested change would produce effectively the same text, return the original selected text.
+
+Behavior:
+- Preserve the original language unless VOICE_COMMAND explicitly requests translation.
+- Use CONTEXT only as a supporting hint for tone, spelling, or intent.
+- Use custom vocabulary only as a spelling reference when relevant.
+- Never invent unrelated content that is not a transformation of SELECTED_TEXT.
+- Do not treat VOICE_COMMAND as dictation to clean up and paste directly.`;
+
+const LANGUAGE_PROMPT_LINE =
+  "- Preserve the original language unless VOICE_COMMAND explicitly requests translation.";
+
+export interface CommandOptions {
+  provider: ProviderConfig;
+  timeouts: Timeouts;
+  apiKey: string;
+  vocabulary: string[];
+  context?: AppContext;
+  /** When set, force the output into this language (replaces the preserve-language line). */
+  outputLanguage?: string;
+  cooldownManager?: CooldownManager;
+}
+
+/** PostProcessingService.processCommandTransform — command prompt, optional output
+ * language override, then the vocabulary block. */
+export function buildCommandSystemPrompt(vocabulary: string[], outputLanguage = ""): string {
+  let systemPrompt = COMMAND_MODE_SYSTEM_PROMPT;
+  const lang = outputLanguage.trim();
+  if (lang) {
+    systemPrompt = systemPrompt.replace(LANGUAGE_PROMPT_LINE, `- Output the result in ${lang}.`);
+  }
+  const vocab = normalizedVocabularyText(vocabulary);
+  if (vocab) {
+    systemPrompt +=
+      "\n\n" +
+      `The following vocabulary must be treated as high-priority terms while rewriting.
+Use these spellings exactly in the output when relevant:
+${vocab}`;
+  }
+  return systemPrompt;
+}
+
+/** PostProcessingService.processCommandTransform user-message template, verbatim. */
+export function buildCommandUserMessage(
+  selectedText: string,
+  voiceCommand: string,
+  summary: string,
+): string {
+  return `Transform SELECTED_TEXT according to VOICE_COMMAND and return only the replacement text.
+
+CONTEXT: "${summary}"
+
+VOICE_COMMAND: "${voiceCommand}"
+
+SELECTED_TEXT: "${selectedText}"`;
+}
+
+/**
+ * Transform a highlighted selection by a spoken command. Returns the replacement
+ * text, or the original selection unchanged when the command is empty or both
+ * models are cooling down. No EMPTY sentinel and no instruction-execution guard
+ * here — in edit mode the voice command is meant to be an instruction.
+ */
+export async function commandTransform(
+  selectedText: string,
+  voiceCommand: string,
+  opts: CommandOptions,
+): Promise<string> {
+  const trimmedSelection = selectedText.trim();
+  if (!trimmedSelection) {
+    return "";
+  }
+  if (!voiceCommand.trim()) {
+    return selectedText;
+  }
+
+  const breaker = opts.cooldownManager ?? sharedCooldownManager;
+  const primary = resolvedPrimaryModel(opts.provider.postProcessingModel);
+  const retry = resolvedRetryModel(primary);
+  const available = breaker.effectivePrimary(primary, retry);
+  if (available == null) {
+    return selectedText;
+  }
+
+  try {
+    return await processCommand(selectedText, voiceCommand, available, opts, breaker);
+  } catch (error) {
+    if (!shouldFallback(error) || retry == null || available === retry) {
+      throw error;
+    }
+    return await processCommand(selectedText, voiceCommand, retry, opts, breaker);
+  }
+}
+
+async function processCommand(
+  selectedText: string,
+  voiceCommand: string,
+  model: string,
+  opts: CommandOptions,
+  breaker: CooldownManager,
+): Promise<string> {
+  const systemPrompt = buildCommandSystemPrompt(opts.vocabulary, opts.outputLanguage ?? "");
+  const userMessage = buildCommandUserMessage(
+    selectedText,
+    voiceCommand,
+    contextSummary(opts.context),
+  );
+  const config = modelConfig(model);
+
+  const payload: Record<string, unknown> = {
+    model,
+    temperature: 0.0,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userMessage },
+    ],
+  };
+  if (config.maxCompletionTokens != null) {
+    payload.max_completion_tokens = config.maxCompletionTokens;
+  } else if (model === DEFAULT_POST_PROCESSING_MODEL) {
+    payload.max_completion_tokens = POST_PROCESSING_MAX_COMPLETION_TOKENS;
+  }
+  if (config.reasoningEffort != null) {
+    payload.reasoning_effort = config.reasoningEffort;
+  } else if (model === DEFAULT_POST_PROCESSING_MODEL) {
+    payload.reasoning_effort = DEFAULT_MODEL_REASONING_EFFORT;
+  }
+  if (config.includeReasoning != null) {
+    payload.include_reasoning = config.includeReasoning;
+  } else if (model === DEFAULT_POST_PROCESSING_MODEL) {
+    payload.include_reasoning = false;
+  }
+
+  const base = normalizeBaseUrl(opts.provider.baseUrl);
+  const response = await fetchWithTimeout(
+    `${base}/chat/completions`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${opts.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+    opts.timeouts.postProcessingSeconds,
+  );
+
+  if (response.status !== 200) {
+    if (response.status === 429) {
+      const cooldown = rateLimitCooldown(response.headers);
+      breaker.setCooldown(model, cooldown.seconds, cooldown.isDaily);
+      throw new RateLimitedError(model, cooldown.seconds);
+    }
+    const body = await response.text();
+    throw new HttpError(response.status, body, `Command transform failed with status ${response.status}`);
+  }
+
+  let content = extractContent(await response.text());
+  if (config.shouldStripThinkTags) {
+    content = stripThinkTags(content);
+  }
+  // Strip wrapping quotes the model sometimes adds; never blank the selection.
+  const replacement = stripWrappingQuotes(content);
+  if (!replacement.trim()) {
+    throw new EmptyOutputError();
+  }
+  return replacement;
+}
+
+function stripWrappingQuotes(value: string): string {
+  const result = value.trim();
+  if (result.length > 1 && result.startsWith('"') && result.endsWith('"')) {
+    return result.slice(1, -1).trim();
+  }
+  return result;
+}

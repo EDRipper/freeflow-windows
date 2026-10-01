@@ -41,8 +41,8 @@ The macOS original uses AppKit/SwiftUI, a `CGEventTap` global hotkey, the Access
 - [ ] Settings (provider, models, shortcuts, vocabulary, custom prompt)
 - [ ] Encrypted API key storage
 - [ ] Windows installer + CI release
+- [x] Edit mode (transform a selection by a spoken command)
 - [ ] Nearby-app context capture (UI Automation)
-- [ ] Edit mode
 - [ ] Auto-update
 
 ## License

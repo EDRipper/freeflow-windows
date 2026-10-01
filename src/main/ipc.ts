@@ -1,10 +1,10 @@
 import { ipcMain, IpcMainInvokeEvent } from "electron";
 import { IPC } from "../shared/ipc";
 import { AppConfig, PipelineResult } from "../shared/types";
-import { runPipeline } from "../core/pipeline";
+import { runEditMode, runPipeline } from "../core/pipeline";
 import { ConfigStore } from "./config";
 import { OverlayController } from "./overlay";
-import { pasteText } from "./paste";
+import { getSelectedText, pasteText } from "./paste";
 
 export interface MainContext {
   config: ConfigStore;
@@ -40,8 +40,15 @@ export function registerIpcHandlers(ctx: MainContext): void {
         throw new Error("No API key configured.");
       }
 
+      const config = ctx.config.get();
       try {
-        const result = await runPipeline(audio, mimeType, apiKey, ctx.config.get());
+        // Edit Mode: if enabled and there's a live selection, transform it by the
+        // spoken command instead of pasting a fresh dictation. No selection means
+        // there's nothing to edit, so fall through to ordinary dictation.
+        const selection = config.editModeEnabled ? await getSelectedText() : "";
+        const result = selection
+          ? await runEditMode(audio, mimeType, apiKey, config, selection)
+          : await runPipeline(audio, mimeType, apiKey, config);
         if (result.cleanedText.trim().length > 0) {
           await pasteText(result.cleanedText);
         }
