@@ -3,6 +3,7 @@ import { IPC } from "../shared/ipc";
 import { AppConfig, PipelineResult } from "../shared/types";
 import { runEditMode, runPipeline } from "../core/pipeline";
 import { ConfigStore } from "./config";
+import { captureContext } from "./context";
 import { OverlayController } from "./overlay";
 import { getSelectedText, pasteText } from "./paste";
 
@@ -46,9 +47,10 @@ export function registerIpcHandlers(ctx: MainContext): void {
         // spoken command instead of pasting a fresh dictation. No selection means
         // there's nothing to edit, so fall through to ordinary dictation.
         const selection = config.editModeEnabled ? await getSelectedText() : "";
+        const context = await captureContext(config.timeouts.contextRequestSeconds);
         const result = selection
-          ? await runEditMode(audio, mimeType, apiKey, config, selection)
-          : await runPipeline(audio, mimeType, apiKey, config);
+          ? await runEditMode(audio, mimeType, apiKey, config, selection, context)
+          : await runPipeline(audio, mimeType, apiKey, config, context);
         if (result.cleanedText.trim().length > 0) {
           await pasteText(result.cleanedText);
         }

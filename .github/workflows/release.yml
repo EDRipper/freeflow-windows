@@ -31,7 +31,17 @@ jobs:
       - name: Test
         run: npm test
 
+      # On a tag, electron-builder publishes the installer plus latest.yml and the
+      # blockmap to the GitHub release so auto-update can find them. On a manual
+      # run it just builds, and the artifact below carries the .exe for testing.
+      - name: Package + publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        run: npm run build && npx electron-builder --win nsis --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Package installer
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         run: npm run dist:win
 
       - name: Upload installer artifact
@@ -39,9 +49,3 @@ jobs:
         with:
           name: FreeFlow-Windows-Setup
           path: release/*.exe
-
-      - name: Attach to release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: release/*.exe

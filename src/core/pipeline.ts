@@ -15,6 +15,7 @@ export async function runPipeline(
   mimeType: string,
   apiKey: string,
   config: AppConfig,
+  context?: AppContext,
 ): Promise<PipelineResult> {
   const start = Date.now();
 
@@ -36,6 +37,7 @@ export async function runPipeline(
     apiKey,
     vocabulary: config.vocabulary,
     customSystemPrompt: config.customSystemPrompt,
+    context,
   });
 
   return { rawTranscript, cleanedText, durationMs: Date.now() - start };
