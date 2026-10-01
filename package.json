@@ -59,7 +59,8 @@
       {
         "provider": "github",
         "owner": "EDRipper",
-        "repo": "freeflow-windows"
+        "repo": "freeflow-windows",
+        "releaseType": "release"
       }
     ]
   }
