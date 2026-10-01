@@ -1,0 +1,138 @@
+/* The overlay window itself is transparent and chromeless; only the pill paints.
+   Mirrors the Swift overlay: a dark capsule with a white level meter. */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 17px;
+  background: #1c1c1e;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  color: #fff;
+  /* Spring-in when the overlay appears. */
+  animation: pill-in 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes pill-in {
+  from {
+    transform: translateY(-8px) scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* Live level meter: a symmetric row of bars whose heights follow the audio
+   level, tallest in the center. Heights are driven from script via the
+   --level custom property and a per-bar weight. */
+.indicator {
+  display: flex;
+  align-items: center;
+  gap: 2.5px;
+  height: 24px;
+}
+
+.bar {
+  width: 3px;
+  min-height: 2px;
+  height: calc(2px + 20px * var(--level, 0) * var(--weight, 1));
+  border-radius: 2px;
+  background: #fff;
+  transition: height 70ms ease-out;
+}
+
+.bar:nth-child(1),
+.bar:nth-child(7) {
+  --weight: 0.35;
+}
+.bar:nth-child(2),
+.bar:nth-child(6) {
+  --weight: 0.6;
+}
+.bar:nth-child(3),
+.bar:nth-child(5) {
+  --weight: 0.85;
+}
+.bar:nth-child(4) {
+  --weight: 1;
+}
+
+/* Transcribing: three pulsing dots replace the meter. */
+.processing {
+  gap: 5px;
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0.35;
+  animation: dot-pulse 1.05s ease-in-out infinite;
+}
+
+.dot:nth-child(2) {
+  animation-delay: 0.14s;
+}
+.dot:nth-child(3) {
+  animation-delay: 0.28s;
+}
+
+@keyframes dot-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.1);
+  }
+}
+
+/* State visibility is toggled by the data-state attribute on .pill. */
+.pill[data-state="recording"] .processing {
+  display: none;
+}
+.pill[data-state="transcribing"] .indicator:not(.processing) {
+  display: none;
+}
+
+.pill[data-state="transcribing"] {
+  background: #1c1c1e;
+}

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FreeFlow Settings</title>
+    <link rel="stylesheet" href="./settings.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="masthead">
+        <h1>FreeFlow</h1>
+        <p>Dictate anywhere. Configure your provider, shortcuts, and cleanup.</p>
+      </header>
+
+      <section class="group" aria-labelledby="h-provider">
+        <h2 id="h-provider">Provider</h2>
+
+        <div class="row">
+          <div class="row-text">
+            <label for="apiKey">API key</label>
+            <p class="hint">Stored securely and never shown again. <span id="apiKeyStatus" class="badge">checking…</span></p>
+          </div>
+          <div class="row-control key-control">
+            <input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Enter your API key" />
+            <button id="saveKey" type="button" class="btn">Save key</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="row-text">
+            <label for="baseUrl">Base URL</label>
+            <p class="hint">Any OpenAI-compatible endpoint.</p>
+          </div>
+          <div class="row-control">
+            <input id="baseUrl" type="text" spellcheck="false" class="mono" placeholder="https://api.groq.com/openai/v1" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="row-text">
+            <label for="transcriptionModel">Transcription model</label>
+            <p class="hint">Speech-to-text model id.</p>
+          </div>
+          <div class="row-control">
+            <input id="transcriptionModel" type="text" spellcheck="false" class="mono" placeholder="whisper-large-v3" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="row-text">
+            <label for="postProcessingModel">Post-processing model</label>
+            <p class="hint">Chat model used to clean up the transcript.</p>
+          </div>
+          <div class="row-control">
+            <input id="postProcessingModel" type="text" spellcheck="false" class="mono" placeholder="llama-3.3-70b-versatile" />
+          </div>
+        </div>
+      </section>
+
+      <section class="group" aria-labelledby="h-shortcuts">
+        <h2 id="h-shortcuts">Shortcuts</h2>
+
+        <div class="row">
+          <div class="row-text">
+            <label>Hold to dictate</label>
+            <p class="hint">Records while the keys are held.</p>
+          </div>
+          <div class="row-control shortcut-control">
+            <kbd id="holdDisplay" class="combo">—</kbd>
+            <button id="holdRecord" type="button" class="btn" data-target="hold">Record</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="row-text">
+            <label>Toggle dictation</label>
+            <p class="hint">Press once to start, again to stop.</p>
+          </div>
+          <div class="row-control shortcut-control">
+            <kbd id="toggleDisplay" class="combo">—</kbd>
+            <button id="toggleRecord" type="button" class="btn" data-target="toggle">Record</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="group" aria-labelledby="h-cleanup">
+        <h2 id="h-cleanup">Cleanup</h2>
+
+        <div class="row stack">
+          <div class="row-text">
+            <label for="vocabInput">Custom vocabulary</label>
+            <p class="hint">Names and jargon to preserve during cleanup.</p>
+          </div>
+          <div class="row-control">
+            <div class="vocab-add">
+              <input id="vocabInput" type="text" spellcheck="false" placeholder="Add a word or phrase" />
+              <button id="vocabAdd" type="button" class="btn">Add</button>
+            </div>
+            <ul id="vocabList" class="chips" aria-label="Custom vocabulary"></ul>
+          </div>
+        </div>
+
+        <div class="row stack">
+          <div class="row-text">
+            <label for="systemPrompt">Custom system prompt</label>
+            <p class="hint">Overrides the default cleanup instructions. Leave empty to use the default.</p>
+          </div>
+          <div class="row-control">
+            <textarea id="systemPrompt" rows="6" spellcheck="false" placeholder="e.g. Keep my informal tone. Never add greetings."></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="group" aria-labelledby="h-behavior">
+        <h2 id="h-behavior">Behavior</h2>
+
+        <div class="row toggle-row">
+          <div class="row-text">
+            <label for="editMode">Edit mode</label>
+            <p class="hint">Transform selected text with a spoken instruction instead of dictating over it.</p>
+          </div>
+          <label class="switch">
+            <input id="editMode" type="checkbox" />
+            <span class="track" aria-hidden="true"></span>
+          </label>
+        </div>
+
+        <div class="row toggle-row">
+          <div class="row-text">
+            <label for="launchAtLogin">Launch at login</label>
+            <p class="hint">Start FreeFlow automatically when you sign in.</p>
+          </div>
+          <label class="switch">
+            <input id="launchAtLogin" type="checkbox" />
+            <span class="track" aria-hidden="true"></span>
+          </label>
+        </div>
+      </section>
+    </main>
+
+    <footer class="actionbar">
+      <span id="saveStatus" class="save-status" role="status"></span>
+      <button id="save" type="button" class="btn primary">Save changes</button>
+    </footer>
+
+    <div id="captureOverlay" class="capture-overlay" hidden>
+      <div class="capture-card">
+        <p class="capture-title">Press your shortcut</p>
+        <kbd id="captureDisplay" class="combo big">…</kbd>
+        <p class="capture-hint">Release the keys to set it, or press Esc to cancel.</p>
+      </div>
+    </div>
+
+    <script src="./settings.js"></script>
+  </body>
+</html>

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FreeFlow Recording</title>
+    <link rel="stylesheet" href="./overlay.css" />
+  </head>
+  <body>
+    <div class="pill" id="pill" data-state="recording">
+      <div class="indicator" id="recordingIndicator" aria-hidden="true">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </div>
+      <div class="indicator processing" id="processingIndicator" aria-hidden="true">
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </div>
+      <span class="label" id="label">Recording</span>
+    </div>
+    <script src="./overlay.js"></script>
+  </body>
+</html>
