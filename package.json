@@ -12,7 +12,7 @@
     "build": "npm run build:main && npm run build:renderer",
     "start": "npm run build && electron .",
     "dist:win": "npm run build && electron-builder --win nsis --publish never",
-    "test": "node --test dist/core/**/*.test.js"
+    "test": "tsc --outDir dist-test && node --test \"dist-test/**/*.test.js\""
   },
   "dependencies": {
     "@nut-tree-fork/nut-js": "^4.2.0",
