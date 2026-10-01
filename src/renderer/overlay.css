@@ -16,6 +16,10 @@ body {
   -webkit-user-select: none;
   user-select: none;
   cursor: default;
+  /* The overlay is display-only. Main sets the window click-through, but
+     refusing pointer events here too means the renderer can never swallow a
+     click even if that window flag is ever dropped. */
+  pointer-events: none;
 }
 
 body {
@@ -125,14 +129,23 @@ body {
   }
 }
 
-/* State visibility is toggled by the data-state attribute on .pill. */
+/* State visibility is toggled by the data-state attribute on .pill: the level
+   meter shows only while recording, the dots only while transcribing, and the
+   error state shows neither — just the tinted label. */
 .pill[data-state="recording"] .processing {
   display: none;
 }
 .pill[data-state="transcribing"] .indicator:not(.processing) {
   display: none;
 }
+.pill[data-state="error"] .indicator {
+  display: none;
+}
 
-.pill[data-state="transcribing"] {
-  background: #1c1c1e;
+.pill[data-state="error"] {
+  background: #2a1b1b;
+}
+
+.pill[data-state="error"] .label {
+  color: #ff8d7a;
 }

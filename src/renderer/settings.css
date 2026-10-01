@@ -432,3 +432,80 @@ textarea {
   font-size: 12.5px;
   color: var(--text-dim);
 }
+
+.capture-card .btn {
+  margin-top: 20px;
+}
+
+/* First-run guided callout. Shown only until an API key is saved. A single
+   accent hairline on the leading edge keeps it calm rather than boxed-in. */
+.setup {
+  margin-top: 20px;
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+}
+
+.setup[hidden] {
+  display: none;
+}
+
+.setup h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.setup-lead {
+  margin: 6px 0 0;
+  color: var(--text-dim);
+  max-width: 62ch;
+}
+
+.setup-steps {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.url {
+  font-family: "Cascadia Code", "Consolas", ui-monospace, monospace;
+  font-size: 12.5px;
+  color: var(--accent);
+  user-select: all;
+}
+
+/* Draw the eye to the key field before anything is configured. */
+body.needs-key #apiKey {
+  border-color: var(--accent);
+}
+
+/* Inline field validation */
+.stack-control {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.field-error {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--danger);
+}
+
+.field-error[hidden] {
+  display: none;
+}
+
+input.invalid {
+  border-color: var(--danger);
+}
+
+input.invalid:focus {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger) 30%, transparent);
+}

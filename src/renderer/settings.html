@@ -13,6 +13,19 @@
         <p>Dictate anywhere. Configure your provider, shortcuts, and cleanup.</p>
       </header>
 
+      <section id="setup" class="setup" aria-labelledby="h-setup" hidden>
+        <h2 id="h-setup">Get started</h2>
+        <p class="setup-lead">
+          FreeFlow turns speech into text using an OpenAI-compatible provider.
+          Add a free Groq API key below and you're ready to dictate.
+        </p>
+        <ol class="setup-steps">
+          <li>Open <span class="url">console.groq.com/keys</span> in your browser.</li>
+          <li>Create a free account if you don't already have one.</li>
+          <li>Click <strong>Create API Key</strong>, copy it, then paste it below.</li>
+        </ol>
+      </section>
+
       <section class="group" aria-labelledby="h-provider">
         <h2 id="h-provider">Provider</h2>
 
@@ -22,7 +35,7 @@
             <p class="hint">Stored securely and never shown again. <span id="apiKeyStatus" class="badge">checking…</span></p>
           </div>
           <div class="row-control key-control">
-            <input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Enter your API key" />
+            <input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your API key" />
             <button id="saveKey" type="button" class="btn">Save key</button>
           </div>
         </div>
@@ -32,8 +45,9 @@
             <label for="baseUrl">Base URL</label>
             <p class="hint">Any OpenAI-compatible endpoint.</p>
           </div>
-          <div class="row-control">
-            <input id="baseUrl" type="text" spellcheck="false" class="mono" placeholder="https://api.groq.com/openai/v1" />
+          <div class="row-control stack-control">
+            <input id="baseUrl" type="text" spellcheck="false" class="mono" placeholder="https://api.groq.com/openai/v1" aria-describedby="baseUrlError" />
+            <p id="baseUrlError" class="field-error" role="alert" hidden></p>
           </div>
         </div>
 
@@ -63,23 +77,23 @@
 
         <div class="row">
           <div class="row-text">
-            <label>Hold to dictate</label>
-            <p class="hint">Records while the keys are held.</p>
+            <label>Hold to talk</label>
+            <p class="hint">Records while the keys are held; release to stop.</p>
           </div>
           <div class="row-control shortcut-control">
             <kbd id="holdDisplay" class="combo">—</kbd>
-            <button id="holdRecord" type="button" class="btn" data-target="hold">Record</button>
+            <button id="holdRecord" type="button" class="btn" data-target="hold" aria-label="Change hold-to-talk shortcut">Change</button>
           </div>
         </div>
 
         <div class="row">
           <div class="row-text">
-            <label>Toggle dictation</label>
-            <p class="hint">Press once to start, again to stop.</p>
+            <label>Tap to toggle</label>
+            <p class="hint">Tap once to start dictating, again to stop.</p>
           </div>
           <div class="row-control shortcut-control">
             <kbd id="toggleDisplay" class="combo">—</kbd>
-            <button id="toggleRecord" type="button" class="btn" data-target="toggle">Record</button>
+            <button id="toggleRecord" type="button" class="btn" data-target="toggle" aria-label="Change tap-to-toggle shortcut">Change</button>
           </div>
         </div>
       </section>
@@ -145,10 +159,11 @@
     </footer>
 
     <div id="captureOverlay" class="capture-overlay" hidden>
-      <div class="capture-card">
-        <p class="capture-title">Press your shortcut</p>
+      <div class="capture-card" role="dialog" aria-modal="true" aria-labelledby="captureTitle">
+        <p id="captureTitle" class="capture-title">Press your shortcut</p>
         <kbd id="captureDisplay" class="combo big">…</kbd>
-        <p class="capture-hint">Release the keys to set it, or press Esc to cancel.</p>
+        <p class="capture-hint">Release the keys to set it.</p>
+        <button id="captureCancel" type="button" class="btn">Cancel (Esc)</button>
       </div>
     </div>
 
