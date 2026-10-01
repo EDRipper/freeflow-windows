@@ -1,0 +1,44 @@
+{
+  "name": "freeflow-windows",
+  "version": "0.1.0",
+  "description": "Free and open source dictation app for Windows. Port of FreeFlow (macOS) to Electron.",
+  "license": "MIT",
+  "author": "FreeFlow Windows contributors",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build:main": "esbuild src/main/index.ts src/preload/index.ts --bundle --platform=node --format=cjs --external:electron --external:node-global-key-listener --external:@nut-tree-fork/nut-js --outdir=dist --outbase=src",
+    "build:renderer": "node scripts/build-renderer.mjs",
+    "build": "npm run build:main && npm run build:renderer",
+    "start": "npm run build && electron .",
+    "dist:win": "npm run build && electron-builder --win nsis --publish never",
+    "test": "node --test dist/core/**/*.test.js"
+  },
+  "dependencies": {
+    "@nut-tree-fork/nut-js": "^4.2.0",
+    "node-global-key-listener": "^0.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "electron": "^32.0.0",
+    "electron-builder": "^25.0.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0"
+  },
+  "build": {
+    "appId": "com.freeflow.windows",
+    "productName": "FreeFlow",
+    "directories": { "output": "release", "buildResources": "resources" },
+    "files": ["dist/**/*", "package.json"],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "resources/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}
