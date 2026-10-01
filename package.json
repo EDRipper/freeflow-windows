@@ -7,7 +7,7 @@
   "main": "dist/main/index.js",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build:main": "esbuild src/main/index.ts src/preload/index.ts --bundle --platform=node --format=cjs --external:electron --external:node-global-key-listener --external:@nut-tree-fork/nut-js --outdir=dist --outbase=src",
+    "build:main": "esbuild src/main/index.ts src/preload/index.ts --bundle --platform=node --format=cjs --external:electron --external:node-global-key-listener --external:@nut-tree-fork/nut-js --external:active-win --external:electron-updater --outdir=dist --outbase=src",
     "build:renderer": "node scripts/build-renderer.mjs",
     "build": "npm run build:main && npm run build:renderer",
     "start": "npm run build && electron .",
@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@nut-tree-fork/nut-js": "^4.2.0",
+    "active-win": "^7.7.2",
+    "electron-updater": "^6.3.9",
     "node-global-key-listener": "^0.3.0"
   },
   "devDependencies": {
@@ -52,6 +54,13 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "EDRipper",
+        "repo": "freeflow-windows"
+      }
+    ]
   }
 }

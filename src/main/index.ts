@@ -7,6 +7,7 @@ import { ConfigStore } from "./config";
 import { HotkeyEngine } from "./hotkey";
 import { registerIpcHandlers, MainContext } from "./ipc";
 import { OverlayController, overlayPaths } from "./overlay";
+import { initAutoUpdater } from "./updater";
 
 const preloadPath = path.join(__dirname, "../preload/index.js");
 const settingsHtmlPath = path.join(__dirname, "../renderer/settings.html");
@@ -239,6 +240,8 @@ async function bootstrap(): Promise<void> {
   if (!loaded.provider.baseUrl || !(await config.isApiKeySet())) {
     showSettings();
   }
+
+  initAutoUpdater();
 }
 
 const gotLock = app.requestSingleInstanceLock();
