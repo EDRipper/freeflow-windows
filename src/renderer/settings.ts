@@ -12,10 +12,12 @@ function el<T extends HTMLElement>(id: string): T {
 }
 
 const fields = {
+  setup: el<HTMLElement>("setup"),
   apiKey: el<HTMLInputElement>("apiKey"),
   apiKeyStatus: el<HTMLSpanElement>("apiKeyStatus"),
   saveKey: el<HTMLButtonElement>("saveKey"),
   baseUrl: el<HTMLInputElement>("baseUrl"),
+  baseUrlError: el<HTMLParagraphElement>("baseUrlError"),
   transcriptionModel: el<HTMLInputElement>("transcriptionModel"),
   postProcessingModel: el<HTMLInputElement>("postProcessingModel"),
   holdDisplay: el<HTMLElement>("holdDisplay"),
@@ -32,6 +34,7 @@ const fields = {
   saveStatus: el<HTMLSpanElement>("saveStatus"),
   captureOverlay: el<HTMLDivElement>("captureOverlay"),
   captureDisplay: el<HTMLElement>("captureDisplay"),
+  captureCancel: el<HTMLButtonElement>("captureCancel"),
 };
 
 // Working copy of config. The two shortcut bindings live here because they are
@@ -157,7 +160,7 @@ function onCaptureKeyDown(event: KeyboardEvent): void {
   event.preventDefault();
   event.stopPropagation();
 
-  if (event.code === "Escape" && capture.pressed.size === 0) {
+  if (event.code === "Escape") {
     endCapture(false);
     return;
   }
@@ -230,6 +233,10 @@ function setKeyStatus(present: boolean): void {
   fields.apiKeyStatus.textContent = present ? "set" : "not set";
   fields.apiKeyStatus.classList.toggle("set", present);
   fields.apiKeyStatus.classList.toggle("unset", !present);
+  // First run: no key yet. Surface the guided setup callout and nudge focus to
+  // the key field. Once a key exists the callout collapses and stays gone.
+  fields.setup.hidden = present;
+  document.body.classList.toggle("needs-key", !present);
 }
 
 async function refreshKeyStatus(): Promise<void> {
@@ -237,6 +244,7 @@ async function refreshKeyStatus(): Promise<void> {
     setKeyStatus(await window.freeflow.isApiKeySet());
   } catch {
     fields.apiKeyStatus.textContent = "unknown";
+    fields.apiKeyStatus.classList.remove("set", "unset");
   }
 }
 
@@ -256,6 +264,34 @@ async function saveApiKey(): Promise<void> {
   }
 }
 
+// --- Base URL validation -----------------------------------------------------
+
+// Returns a human-readable problem with the base URL, or null if it is fine.
+// Empty is allowed: it falls back to the provider default at save time.
+function baseUrlProblem(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return "Enter a full URL, e.g. https://api.groq.com/openai/v1";
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return "Base URL must start with http:// or https://";
+  }
+  return null;
+}
+
+function validateBaseUrl(): boolean {
+  const problem = baseUrlProblem(fields.baseUrl.value);
+  fields.baseUrlError.textContent = problem ?? "";
+  fields.baseUrlError.hidden = problem === null;
+  fields.baseUrl.classList.toggle("invalid", problem !== null);
+  fields.baseUrl.setAttribute("aria-invalid", problem !== null ? "true" : "false");
+  return problem === null;
+}
+
 // --- Load / save -------------------------------------------------------------
 
 function applyConfig(config: AppConfig): void {
@@ -272,6 +308,7 @@ function applyConfig(config: AppConfig): void {
   fields.launchAtLogin.checked = config.launchAtLogin;
   renderShortcuts();
   renderVocabulary();
+  validateBaseUrl();
 }
 
 function collectConfig(): AppConfig {
@@ -315,6 +352,11 @@ function flash(message: string, kind: "ok" | "err"): void {
 }
 
 async function saveConfig(): Promise<void> {
+  if (!validateBaseUrl()) {
+    fields.baseUrl.focus();
+    flash("Fix the highlighted field before saving.", "err");
+    return;
+  }
   fields.save.disabled = true;
   try {
     await window.freeflow.setConfig(collectConfig());
@@ -334,11 +376,33 @@ function wire(): void {
     if (event.key === "Enter") void saveApiKey();
   });
 
+  fields.baseUrl.addEventListener("input", () => {
+    // Clear a standing error as the user corrects it; don't nag mid-typing.
+    if (!fields.baseUrlError.hidden) validateBaseUrl();
+  });
+  fields.baseUrl.addEventListener("blur", () => validateBaseUrl());
+
+  // Enter on a single-line provider field commits the whole form, matching the
+  // macOS app where return saves. The textarea and vocab input are excluded:
+  // the textarea needs newlines, and vocab's Enter adds an entry.
+  for (const input of [fields.baseUrl, fields.transcriptionModel, fields.postProcessingModel]) {
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        void saveConfig();
+      }
+    });
+  }
+
   fields.holdRecord.addEventListener("click", () => startCapture("hold"));
   fields.toggleRecord.addEventListener("click", () => startCapture("toggle"));
   window.addEventListener("keydown", onCaptureKeyDown, true);
   window.addEventListener("keyup", onCaptureKeyUp, true);
-  fields.captureOverlay.addEventListener("click", () => endCapture(false));
+  // Cancel only when the backdrop itself is clicked, not the card contents.
+  fields.captureOverlay.addEventListener("click", (event) => {
+    if (event.target === fields.captureOverlay) endCapture(false);
+  });
+  fields.captureCancel.addEventListener("click", () => endCapture(false));
 
   fields.vocabAdd.addEventListener("click", addVocabularyEntry);
   fields.vocabInput.addEventListener("keydown", (event) => {
@@ -349,6 +413,13 @@ function wire(): void {
   });
 
   fields.save.addEventListener("click", () => void saveConfig());
+  // Ctrl/Cmd+S saves from anywhere in the window.
+  window.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+      event.preventDefault();
+      void saveConfig();
+    }
+  });
 }
 
 async function init(): Promise<void> {
@@ -364,6 +435,7 @@ async function init(): Promise<void> {
     flash("Could not load settings; showing defaults.", "err");
   }
   await refreshKeyStatus();
+  if (document.body.classList.contains("needs-key")) fields.apiKey.focus();
 }
 
 void init();

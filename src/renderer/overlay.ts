@@ -23,7 +23,7 @@ function applyState(state: RecordingState): void {
   // idle has no overlay; main hides the window. Treat it as recording-shaped
   // so a stray idle event does not blank the pill mid-animation.
   const phase = state === "idle" ? "recording" : state;
-  pill.setAttribute("data-state", phase === "transcribing" ? "transcribing" : "recording");
+  pill.setAttribute("data-state", phase);
   label.textContent = LABELS[state] ?? "Recording";
   if (state !== "recording") setLevel(0);
 }
