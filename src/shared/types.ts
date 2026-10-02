@@ -21,7 +21,7 @@ export interface Timeouts {
 export type ShortcutMode = "hold" | "toggle";
 
 export interface ShortcutBinding {
-  /** Key identifiers from node-global-key-listener, e.g. ["LEFT CTRL", "SPACE"]. Empty for Fn-only on mac; on windows use a real combo. */
+  /** Key identifier strings, e.g. ["LEFT CTRL", "SPACE"]. Written by the settings UI and mapped from uiohook-napi keycodes in src/main/keynames.ts. */
   keys: string[];
   mode: ShortcutMode;
 }

@@ -47,7 +47,7 @@ let vocabulary: string[] = [];
 let timeouts = structuredClone(DEFAULT_CONFIG.timeouts);
 let transcriptionBaseUrl: string | undefined;
 
-// --- Key event -> node-global-key-listener identifier -----------------------
+// --- Key event -> binding identifier (mapped from uiohook-napi in the main process) ---
 
 const MODIFIER_NAMES: Record<string, string> = {
   ControlLeft: "LEFT CTRL",

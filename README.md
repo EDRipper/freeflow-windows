@@ -30,7 +30,7 @@ Releases are built on `windows-latest` via GitHub Actions (`.github/workflows/re
 
 ## Platform notes
 
-The macOS original uses AppKit/SwiftUI, a `CGEventTap` global hotkey, the Accessibility API for context and paste, and `AVFoundation` audio. None of those exist on Windows, so this port rebuilds that layer: Electron windows/tray, `node-global-key-listener` for the global hotkey, `@nut-tree-fork/nut-js` for the Ctrl+V paste, the Web Audio API for capture, and `safeStorage` (DPAPI) for the API key. The Groq pipeline logic is ported directly.
+The macOS original uses AppKit/SwiftUI, a `CGEventTap` global hotkey, the Accessibility API for context and paste, and `AVFoundation` audio. None of those exist on Windows, so this port rebuilds that layer: Electron windows/tray, `uiohook-napi` for the global hotkey (an in-process N-API hook, so there is no helper binary for antivirus to quarantine), `@nut-tree-fork/nut-js` for the Ctrl+V paste, the Web Audio API for capture, and `safeStorage` (DPAPI) for the API key. The Groq pipeline logic is ported directly.
 
 ## Parity checklist
 
