@@ -1,5 +1,5 @@
-import { app, BrowserWindow, Menu, nativeImage, session, Tray } from "electron";
-import { promises as fs } from "node:fs";
+import { app, BrowserWindow, dialog, Menu, nativeImage, session, Tray } from "electron";
+import { promises as fs, appendFileSync } from "node:fs";
 import path from "node:path";
 import { IPC } from "../shared/ipc";
 import { AppConfig, RecordingState } from "../shared/types";
@@ -244,6 +244,32 @@ async function bootstrap(): Promise<void> {
   initAutoUpdater();
 }
 
+// A fatal error in the main process otherwise kills the app with no window and
+// nothing on screen. Append it to a log the user can find, and show it once so a
+// bad launch is diagnosable instead of a silent one-second flash.
+let fatalReported = false;
+function reportFatal(context: string, error: unknown): void {
+  const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
+  try {
+    const logPath = path.join(app.getPath("userData"), "crash.log");
+    appendFileSync(logPath, `[${new Date().toISOString()}] ${context}\n${message}\n\n`);
+  } catch {
+    /* logging must never throw */
+  }
+  console.error(context, error);
+  if (!fatalReported) {
+    fatalReported = true;
+    try {
+      dialog.showErrorBox("FreeFlow failed to start", `${context}\n\n${message}`);
+    } catch {
+      /* dialog may be unavailable very early */
+    }
+  }
+}
+
+process.on("uncaughtException", (error) => reportFatal("Uncaught exception", error));
+process.on("unhandledRejection", (reason) => reportFatal("Unhandled rejection", reason));
+
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
@@ -268,7 +294,6 @@ if (!gotLock) {
   });
 
   app.whenReady().then(bootstrap).catch((error) => {
-    console.error("FreeFlow failed to start:", error);
-    app.quit();
+    reportFatal("Startup failed", error);
   });
 }

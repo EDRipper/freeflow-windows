@@ -1,5 +1,27 @@
 import { clipboard } from "electron";
-import { keyboard, Key } from "@nut-tree-fork/nut-js";
+import type { keyboard as Keyboard, Key as KeyEnum } from "@nut-tree-fork/nut-js";
+
+// nut-js has a native addon (libnut) for synthetic key events. Load it lazily and
+// guarded so a load failure disables paste/copy rather than crashing the app at
+// startup. Cached after the first successful load.
+type NutJs = { keyboard: typeof Keyboard; Key: typeof KeyEnum };
+let nut: NutJs | null = null;
+let nutFailed = false;
+function loadNut(): NutJs | null {
+  if (nut || nutFailed) {
+    return nut;
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    nut = require("@nut-tree-fork/nut-js") as NutJs;
+    nut.keyboard.config.autoDelayMs = 4;
+    return nut;
+  } catch (error) {
+    nutFailed = true;
+    console.error("nut-js failed to load; paste/copy disabled:", error);
+    return null;
+  }
+}
 
 // Give the synthetic Ctrl+V time to be delivered before we consider restoring
 // the clipboard, and let apps that consume paste asynchronously settle first.
@@ -29,17 +51,17 @@ export async function pasteText(text: string): Promise<void> {
   const lastChar = text[text.length - 1];
   const textToWrite = ".!?".includes(lastChar) ? `${text} ` : text;
 
+  const n = loadNut();
+  if (!n) {
+    return;
+  }
+
   const previous = clipboard.readText();
   clipboard.writeText(textToWrite);
 
-  // nut-js inserts autoDelayMs between each key event; the default is tuned for
-  // reliability but feels sluggish for a two-key combo. Keep it small but
-  // non-zero so the target app registers the modifier before V.
-  keyboard.config.autoDelayMs = 4;
-
   await delay(PASTE_SETTLE_MS);
-  await keyboard.pressKey(Key.LeftControl, Key.V);
-  await keyboard.releaseKey(Key.V, Key.LeftControl);
+  await n.keyboard.pressKey(n.Key.LeftControl, n.Key.V);
+  await n.keyboard.releaseKey(n.Key.V, n.Key.LeftControl);
 
   setTimeout(() => {
     if (clipboard.readText() === textToWrite) {
@@ -61,14 +83,18 @@ const COPY_SETTLE_MS = 120;
  * through the clipboard since Windows has no equivalent cross-app selection API.
  */
 export async function getSelectedText(): Promise<string> {
+  const n = loadNut();
+  if (!n) {
+    return "";
+  }
+
   const previous = clipboard.readText();
   // A sentinel lets us tell "copied the same text again" from "nothing copied".
   const sentinel = `__freeflow_sel_${process.hrtime.bigint()}__`;
   clipboard.writeText(sentinel);
 
-  keyboard.config.autoDelayMs = 4;
-  await keyboard.pressKey(Key.LeftControl, Key.C);
-  await keyboard.releaseKey(Key.C, Key.LeftControl);
+  await n.keyboard.pressKey(n.Key.LeftControl, n.Key.C);
+  await n.keyboard.releaseKey(n.Key.C, n.Key.LeftControl);
   await delay(COPY_SETTLE_MS);
 
   const copied = clipboard.readText();

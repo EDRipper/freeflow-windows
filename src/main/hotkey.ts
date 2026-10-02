@@ -1,10 +1,20 @@
 import { EventEmitter } from "node:events";
-import {
+import type {
   GlobalKeyboardListener,
   IGlobalKeyEvent,
   IGlobalKeyListener,
 } from "node-global-key-listener";
 import { AppConfig, ShortcutBinding } from "../shared/types";
+
+// node-global-key-listener ships a native key-server binary. Load it lazily so a
+// failure to load (missing from the package, blocked binary) degrades to "hotkey
+// disabled" instead of crashing the whole app at startup.
+type GlobalKeyboardListenerCtor = new () => GlobalKeyboardListener;
+function loadKeyListenerCtor(): GlobalKeyboardListenerCtor {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  return (require("node-global-key-listener") as { GlobalKeyboardListener: GlobalKeyboardListenerCtor })
+    .GlobalKeyboardListener;
+}
 
 type ShortcutEvent =
   | "holdActivated"
@@ -120,7 +130,8 @@ export class HotkeyEngine extends EventEmitter {
     if (this.listener) {
       return;
     }
-    this.listener = new GlobalKeyboardListener();
+    const Ctor = loadKeyListenerCtor();
+    this.listener = new Ctor();
     await this.listener.addListener(this.keyListener);
   }
 
