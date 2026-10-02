@@ -1,20 +1,31 @@
 import { EventEmitter } from "node:events";
-import type {
-  GlobalKeyboardListener,
-  IGlobalKeyEvent,
-  IGlobalKeyListener,
-} from "node-global-key-listener";
-import { AppConfig, ShortcutBinding } from "../shared/types";
+import { AppConfig, ShortcutBinding } from "../shared/types.js";
+import { keyNameForCode } from "./keynames.js";
 
-// node-global-key-listener ships a native key-server binary. Load it lazily so a
-// failure to load (missing from the package, blocked binary) degrades to "hotkey
-// disabled" instead of crashing the whole app at startup.
-type GlobalKeyboardListenerCtor = new () => GlobalKeyboardListener;
-function loadKeyListenerCtor(): GlobalKeyboardListenerCtor {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  return (require("node-global-key-listener") as { GlobalKeyboardListener: GlobalKeyboardListenerCtor })
-    .GlobalKeyboardListener;
+// uiohook-napi hooks the keyboard in-process via prebuilt N-API binaries, so there
+// is no helper .exe for Windows Defender to quarantine (the failure mode that made
+// node-global-key-listener never fire). Loaded lazily so a load failure degrades to
+// "hotkey disabled" instead of crashing the app at startup.
+interface UiohookKeyEvent {
+  keycode: number;
+  time: number;
 }
+interface Uiohook {
+  on(event: "keydown" | "keyup", listener: (e: UiohookKeyEvent) => void): void;
+  removeListener(event: "keydown" | "keyup", listener: (e: UiohookKeyEvent) => void): void;
+  start(): void;
+  stop(): void;
+}
+function loadUiohook(): Uiohook {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  return (require("uiohook-napi") as { uIOhook: Uiohook }).uIOhook;
+}
+
+// On UK/most-EU layouts Windows reports AltGr as a synthetic LEFT CTRL down
+// immediately followed by RIGHT ALT down. Without correction, holding AltGr would
+// satisfy the LEFT CTRL + RIGHT ALT toggle chord. If the LEFT CTRL arrived within
+// this window before the RIGHT ALT, treat it as phantom.
+const ALTGR_WINDOW_MS = 15;
 
 type ShortcutEvent =
   | "holdActivated"
@@ -97,14 +108,15 @@ function specificity(binding: ShortcutBinding): number {
 }
 
 /**
- * Global hotkey engine built on node-global-key-listener. Tracks the set of
- * currently held keys, evaluates the hold and toggle bindings as chords (a
- * binding is active when every one of its keys is down), and emits "start" /
- * "stop" events for the recording pipeline.
+ * Global hotkey engine built on uiohook-napi. Tracks the set of currently held
+ * keys, evaluates the hold and toggle bindings as chords (a binding is active
+ * when every one of its keys is down), and emits "start" / "stop" events for the
+ * recording pipeline.
  */
 export class HotkeyEngine extends EventEmitter {
-  private listener: GlobalKeyboardListener | null = null;
-  private readonly keyListener: IGlobalKeyListener;
+  private hook: Uiohook | null = null;
+  private readonly onDown = (e: UiohookKeyEvent) => this.onKeyEvent(e.keycode, e.time, "DOWN");
+  private readonly onUp = (e: UiohookKeyEvent) => this.onKeyEvent(e.keycode, e.time, "UP");
   private readonly pressed = new Set<string>();
   private readonly session = new SessionController();
 
@@ -114,44 +126,48 @@ export class HotkeyEngine extends EventEmitter {
   private toggleActive = false;
   private busy = false;
 
+  // AltGr correction state (see ALTGR_WINDOW_MS).
+  private lastLeftCtrlDownTime = 0;
+  private phantomLeftCtrl = false;
+
   constructor(config: AppConfig) {
     super();
     this.hold = config.holdShortcut;
     this.toggle = config.toggleShortcut;
-    this.keyListener = (event) => {
-      this.onKeyEvent(event);
-      // Never swallow the event: suppressing modifiers like Ctrl or AltGr
-      // system-wide would break normal typing in other apps.
-      return false;
-    };
   }
 
   async start(): Promise<void> {
-    if (this.listener) {
+    if (this.hook) {
       return;
     }
-    const Ctor = loadKeyListenerCtor();
-    this.listener = new Ctor();
-    await this.listener.addListener(this.keyListener);
+    const hook = loadUiohook();
+    hook.on("keydown", this.onDown);
+    hook.on("keyup", this.onUp);
+    hook.start();
+    this.hook = hook;
   }
 
   stop(): void {
-    if (this.listener) {
-      this.listener.kill();
-      this.listener = null;
+    if (this.hook) {
+      this.hook.removeListener("keydown", this.onDown);
+      this.hook.removeListener("keyup", this.onUp);
+      this.hook.stop();
+      this.hook = null;
     }
-    this.pressed.clear();
-    this.holdActive = false;
-    this.toggleActive = false;
-    this.session.reset();
+    this.resetState();
   }
 
   updateConfig(config: AppConfig): void {
     this.hold = config.holdShortcut;
     this.toggle = config.toggleShortcut;
+    this.resetState();
+  }
+
+  private resetState(): void {
     this.pressed.clear();
     this.holdActive = false;
     this.toggleActive = false;
+    this.phantomLeftCtrl = false;
     this.session.reset();
   }
 
@@ -164,19 +180,41 @@ export class HotkeyEngine extends EventEmitter {
     this.busy = busy;
   }
 
-  private onKeyEvent(event: IGlobalKeyEvent): void {
-    const name = event.name;
+  private onKeyEvent(keycode: number, time: number, state: "DOWN" | "UP"): void {
+    const name = keyNameForCode(keycode);
     if (!name) {
       return;
     }
 
-    if (event.state === "DOWN") {
+    if (state === "DOWN") {
+      if (name === "LEFT CTRL") {
+        if (this.phantomLeftCtrl) {
+          // AltGr auto-repeat re-sends the synthetic LEFT CTRL; ignore it.
+          return;
+        }
+        this.lastLeftCtrlDownTime = time;
+      }
+      if (
+        name === "RIGHT ALT" &&
+        !this.phantomLeftCtrl &&
+        this.pressed.has("LEFT CTRL") &&
+        time - this.lastLeftCtrlDownTime <= ALTGR_WINDOW_MS
+      ) {
+        // The LEFT CTRL just before this RIGHT ALT was AltGr, not a real Ctrl.
+        this.pressed.delete("LEFT CTRL");
+        this.phantomLeftCtrl = true;
+      }
       if (this.pressed.has(name)) {
         // Key-repeat auto-fire: the chord state has not changed, ignore it.
         return;
       }
       this.pressed.add(name);
     } else {
+      if (name === "LEFT CTRL" && this.phantomLeftCtrl) {
+        // Release of the synthetic AltGr Ctrl: clear the flag and swallow it.
+        this.phantomLeftCtrl = false;
+        return;
+      }
       if (!this.pressed.has(name)) {
         return;
       }

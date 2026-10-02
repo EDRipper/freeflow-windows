@@ -234,7 +234,14 @@ async function bootstrap(): Promise<void> {
   try {
     await hotkey.start();
   } catch (error) {
+    const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
     console.error("Failed to start global hotkey listener:", error);
+    dialog.showErrorBox(
+      "FreeFlow: shortcut could not start",
+      "The global dictation shortcut failed to start, so FreeFlow will not respond to your hotkey.\n\n" +
+        "If an antivirus removed part of FreeFlow, check Windows Security -> Protection history and allow it.\n\n" +
+        message,
+    );
   }
 
   if (!loaded.provider.baseUrl || !(await config.isApiKeySet())) {
