@@ -36,6 +36,9 @@ const bridge: FreeflowBridge = {
   reportCaptureError(message: string, isPermission: boolean): void {
     ipcRenderer.send(IPC.captureError, message, isPermission);
   },
+  notifyCaptureEnded(): void {
+    ipcRenderer.send(IPC.captureEnded);
+  },
 };
 
 // Renderer convenience over the existing IPC.audioLevel channel: when main

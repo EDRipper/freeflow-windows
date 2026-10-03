@@ -11,6 +11,8 @@ export const IPC = {
   runPipeline: "pipeline:run",
   // renderer -> main: a capture failure worth surfacing to the user
   captureError: "capture:error",
+  // renderer -> main: capture finished with nothing to transcribe (empty recording)
+  captureEnded: "capture:ended",
   // main -> renderer (send)
   recordingStateChanged: "recording:state",
   startCapture: "capture:start",
@@ -32,6 +34,7 @@ export interface FreeflowBridge {
   onRecordingState(cb: (state: import("./types").RecordingState) => void): void;
   reportAudioLevel(level: number): void;
   reportCaptureError(message: string, isPermission: boolean): void;
+  notifyCaptureEnded(): void;
 }
 
 declare global {

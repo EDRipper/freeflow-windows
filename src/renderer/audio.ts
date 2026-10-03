@@ -149,7 +149,10 @@ class CaptureEngine {
   async stop(): Promise<void> {
     const recorder = this.recorder;
     if (!recorder) {
+      // No active recording (e.g. getUserMedia failed at start). Main is already
+      // in the transcribing state, so it must be told there is nothing coming.
       this.stopLevelMeter();
+      window.freeflow.notifyCaptureEnded();
       return;
     }
 
@@ -158,7 +161,12 @@ class CaptureEngine {
     this.releaseStream();
     this.recorder = null;
 
-    if (!blob || blob.size === 0) return;
+    if (!blob || blob.size === 0) {
+      // Nothing was recorded (a quick tap, silence). Settle the state machine
+      // instead of leaving it stuck on the transcribing spinner.
+      window.freeflow.notifyCaptureEnded();
+      return;
+    }
 
     try {
       const buffer = await blob.arrayBuffer();

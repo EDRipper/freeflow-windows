@@ -1,6 +1,6 @@
 {
   "name": "freeflow-windows",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Free and open source dictation app for Windows. Port of FreeFlow (macOS) to Electron.",
   "license": "MIT",
   "author": "FreeFlow Windows contributors",
