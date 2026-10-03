@@ -19,6 +19,17 @@ export interface MainContext {
 }
 
 export function registerIpcHandlers(ctx: MainContext): void {
+  // Debounce user-facing error dialogs so a burst never stacks boxes.
+  let lastErrorDialogAt = 0;
+  const showErrorDialog = (title: string, detail: string): void => {
+    const now = Date.now();
+    if (now - lastErrorDialogAt < 3000) {
+      return;
+    }
+    lastErrorDialogAt = now;
+    dialog.showErrorBox(title, detail);
+  };
+
   ipcMain.handle(IPC.getConfig, (): AppConfig => ctx.config.get());
 
   ipcMain.handle(IPC.setConfig, async (_event: IpcMainInvokeEvent, config: AppConfig): Promise<void> => {
@@ -38,6 +49,10 @@ export function registerIpcHandlers(ctx: MainContext): void {
       const apiKey = await ctx.config.getApiKey();
       if (!apiKey) {
         ctx.onPipelineSettled(false);
+        showErrorDialog(
+          "FreeFlow: no API key",
+          "No Groq API key is set. Open FreeFlow settings (tray icon) and paste your key from console.groq.com/keys.",
+        );
         throw new Error("No API key configured.");
       }
 
@@ -58,6 +73,8 @@ export function registerIpcHandlers(ctx: MainContext): void {
         return result;
       } catch (error) {
         ctx.onPipelineSettled(false);
+        const message = error instanceof Error ? error.message : String(error);
+        showErrorDialog("FreeFlow: transcription failed", message);
         throw error;
       }
     },
@@ -69,23 +86,23 @@ export function registerIpcHandlers(ctx: MainContext): void {
     ctx.overlay.forwardAudioLevel(level);
   });
 
+  // Capture finished with nothing to transcribe (empty/aborted recording): settle
+  // the state machine to idle rather than leaving the transcribing spinner stuck.
+  ipcMain.on(IPC.captureEnded, () => {
+    ctx.onPipelineSettled(true);
+  });
+
   // The capture engine runs in a hidden window; surface its failures so a denied
   // microphone reads as a clear message instead of silence. Debounced so a burst
   // of errors does not stack dialogs.
-  let lastCaptureErrorAt = 0;
   ipcMain.on(IPC.captureError, (_event, message: string, isPermission: boolean) => {
     ctx.onPipelineSettled(false);
-    const now = Date.now();
-    if (now - lastCaptureErrorAt < 3000) {
-      return;
-    }
-    lastCaptureErrorAt = now;
     const detail = isPermission
       ? "Windows is blocking microphone access for FreeFlow.\n\n" +
         "Open Settings -> Privacy & security -> Microphone and turn on both " +
         '"Microphone access" and "Let desktop apps access your microphone", then try again.\n\n' +
         message
       : message;
-    dialog.showErrorBox("FreeFlow: no microphone input", detail);
+    showErrorDialog("FreeFlow: no microphone input", detail);
   });
 }

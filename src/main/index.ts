@@ -22,6 +22,11 @@ let overlay: OverlayController;
 let hotkey: HotkeyEngine;
 let recordingState: RecordingState = "idle";
 let errorResetTimer: NodeJS.Timeout | null = null;
+let transcribeWatchdog: NodeJS.Timeout | null = null;
+
+// Longer than the pipeline's own transcription + cleanup timeouts combined, so the
+// watchdog only fires if the renderer never reports back at all (crash, lost IPC).
+const TRANSCRIBE_WATCHDOG_MS = 60000;
 
 function rendererWindows(): BrowserWindow[] {
   const windows: BrowserWindow[] = [];
@@ -69,9 +74,24 @@ function endRecording(): void {
   broadcast(IPC.stopCapture);
   setRecordingState("transcribing");
   hotkey.setBusy(true);
+  if (transcribeWatchdog) {
+    clearTimeout(transcribeWatchdog);
+  }
+  transcribeWatchdog = setTimeout(() => {
+    transcribeWatchdog = null;
+    if (recordingState === "transcribing") {
+      // Nothing ever came back from the capture window; recover instead of
+      // leaving the spinner (and the busy flag) stuck forever.
+      onPipelineSettled(false);
+    }
+  }, TRANSCRIBE_WATCHDOG_MS);
 }
 
 function onPipelineSettled(ok: boolean): void {
+  if (transcribeWatchdog) {
+    clearTimeout(transcribeWatchdog);
+    transcribeWatchdog = null;
+  }
   hotkey.setBusy(false);
   overlay.hide();
   if (ok) {
