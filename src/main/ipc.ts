@@ -1,4 +1,4 @@
-import { ipcMain, IpcMainInvokeEvent } from "electron";
+import { dialog, ipcMain, IpcMainInvokeEvent } from "electron";
 import { IPC } from "../shared/ipc";
 import { AppConfig, PipelineResult } from "../shared/types";
 import { runEditMode, runPipeline } from "../core/pipeline";
@@ -67,5 +67,25 @@ export function registerIpcHandlers(ctx: MainContext): void {
   // them back out to the overlay window that renders the waveform.
   ipcMain.on(IPC.audioLevel, (_event, level: number) => {
     ctx.overlay.forwardAudioLevel(level);
+  });
+
+  // The capture engine runs in a hidden window; surface its failures so a denied
+  // microphone reads as a clear message instead of silence. Debounced so a burst
+  // of errors does not stack dialogs.
+  let lastCaptureErrorAt = 0;
+  ipcMain.on(IPC.captureError, (_event, message: string, isPermission: boolean) => {
+    ctx.onPipelineSettled(false);
+    const now = Date.now();
+    if (now - lastCaptureErrorAt < 3000) {
+      return;
+    }
+    lastCaptureErrorAt = now;
+    const detail = isPermission
+      ? "Windows is blocking microphone access for FreeFlow.\n\n" +
+        "Open Settings -> Privacy & security -> Microphone and turn on both " +
+        '"Microphone access" and "Let desktop apps access your microphone", then try again.\n\n' +
+        message
+      : message;
+    dialog.showErrorBox("FreeFlow: no microphone input", detail);
   });
 }

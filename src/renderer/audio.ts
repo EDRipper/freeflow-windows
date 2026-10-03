@@ -256,6 +256,9 @@ class CaptureEngine {
         ? error.message
         : "Could not access the microphone.";
     console.error("[freeflow] capture error:", message);
+    // The capture engine lives in a hidden window, so a console log is invisible.
+    // Forward it so the main process can surface a dialog.
+    window.freeflow?.reportCaptureError(message, isPermission);
   }
 }
 

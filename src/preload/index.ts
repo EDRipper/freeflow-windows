@@ -33,6 +33,9 @@ const bridge: FreeflowBridge = {
   reportAudioLevel(level: number): void {
     ipcRenderer.send(IPC.audioLevel, level);
   },
+  reportCaptureError(message: string, isPermission: boolean): void {
+    ipcRenderer.send(IPC.captureError, message, isPermission);
+  },
 };
 
 // Renderer convenience over the existing IPC.audioLevel channel: when main

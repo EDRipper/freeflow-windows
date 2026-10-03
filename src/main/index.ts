@@ -142,6 +142,9 @@ async function createCaptureWindow(): Promise<BrowserWindow> {
       preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
+      // This window is never shown; stop Chromium from throttling its timers and
+      // media pipeline as a background/occluded page.
+      backgroundThrottling: false,
     },
   });
 
