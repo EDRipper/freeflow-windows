@@ -9,6 +9,8 @@ export const IPC = {
   setApiKey: "apikey:set",
   // renderer -> main: a finished recording blob to run through the pipeline
   runPipeline: "pipeline:run",
+  // renderer -> main: a capture failure worth surfacing to the user
+  captureError: "capture:error",
   // main -> renderer (send)
   recordingStateChanged: "recording:state",
   startCapture: "capture:start",
@@ -29,6 +31,7 @@ export interface FreeflowBridge {
   onStopCapture(cb: () => void): void;
   onRecordingState(cb: (state: import("./types").RecordingState) => void): void;
   reportAudioLevel(level: number): void;
+  reportCaptureError(message: string, isPermission: boolean): void;
 }
 
 declare global {
