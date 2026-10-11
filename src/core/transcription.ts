@@ -20,6 +20,13 @@ const HALLUCINATION_PHRASES = new Set([
   "subtitles by",
   "subtitles by the amara.org community",
   "you",
+  // Common foreign-language subtitle artifacts Whisper emits on silence.
+  "terima kasih",
+  "terima kasih telah menonton",
+  "thanks for watching everyone",
+  "thank you for watching everyone",
+  "bye",
+  "bye bye",
 ]);
 
 const HALLUCINATION_NO_SPEECH_THRESHOLD = 0.1;
@@ -43,6 +50,14 @@ export async function transcribe(
   const form = new FormData();
   form.append("model", model);
   form.append("response_format", transcriptionResponseFormat(model));
+  // Pin the language (if configured) so Whisper does not auto-detect its way into
+  // another language and hallucinate foreign subtitle stock-phrases on silence,
+  // and keep temperature at 0 for the most deterministic, least-inventive output.
+  const language = provider.transcriptionLanguage?.trim();
+  if (language) {
+    form.append("language", language);
+  }
+  form.append("temperature", "0");
   form.append("file", new Blob([req.audio], { type: req.mimeType }), fileNameFor(req.mimeType));
 
   const response = await fetchWithTimeout(

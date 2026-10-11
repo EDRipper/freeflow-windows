@@ -88,6 +88,16 @@
 
         <div class="row">
           <div class="row-text">
+            <label for="transcriptionLanguage">Transcription language</label>
+            <p class="hint">ISO code like <code>en</code>. Pinning the language stops Whisper drifting into other languages and hallucinating on silence. Leave blank to auto-detect.</p>
+          </div>
+          <div class="row-control">
+            <input id="transcriptionLanguage" type="text" spellcheck="false" class="mono num" placeholder="en" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="row-text">
             <label for="timeoutTranscription">Transcription timeout</label>
             <p class="hint">Seconds to wait for a transcription response. Raise it for slow local models.</p>
           </div>

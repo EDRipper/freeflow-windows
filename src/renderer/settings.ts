@@ -22,6 +22,7 @@ const fields = {
   postProcessingModel: el<HTMLInputElement>("postProcessingModel"),
   transcriptionBaseUrl: el<HTMLInputElement>("transcriptionBaseUrl"),
   transcriptionBaseUrlError: el<HTMLParagraphElement>("transcriptionBaseUrlError"),
+  transcriptionLanguage: el<HTMLInputElement>("transcriptionLanguage"),
   timeoutTranscription: el<HTMLInputElement>("timeoutTranscription"),
   timeoutPostProcessing: el<HTMLInputElement>("timeoutPostProcessing"),
   timeoutContext: el<HTMLInputElement>("timeoutContext"),
@@ -311,6 +312,7 @@ function applyConfig(config: AppConfig): void {
   fields.transcriptionModel.value = config.provider.transcriptionModel;
   fields.postProcessingModel.value = config.provider.postProcessingModel;
   fields.transcriptionBaseUrl.value = config.provider.transcriptionBaseUrl ?? "";
+  fields.transcriptionLanguage.value = config.provider.transcriptionLanguage ?? "";
   fields.timeoutTranscription.value = String(config.timeouts.transcriptionSeconds);
   fields.timeoutPostProcessing.value = String(config.timeouts.postProcessingSeconds);
   fields.timeoutContext.value = String(config.timeouts.contextRequestSeconds);
@@ -349,6 +351,8 @@ function collectConfig(): AppConfig {
   };
   const transcriptionBaseUrl = fields.transcriptionBaseUrl.value.trim();
   if (transcriptionBaseUrl) provider.transcriptionBaseUrl = transcriptionBaseUrl;
+  const transcriptionLanguage = fields.transcriptionLanguage.value.trim();
+  if (transcriptionLanguage) provider.transcriptionLanguage = transcriptionLanguage;
 
   return {
     provider,

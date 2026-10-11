@@ -10,6 +10,12 @@ export interface ProviderConfig {
   postProcessingModel: string;
   /** Optional separate base URL for transcription if it differs from the LLM endpoint. */
   transcriptionBaseUrl?: string;
+  /**
+   * ISO-639-1 language code (e.g. "en") pinned for transcription. Pinning the
+   * language stops Whisper from drifting into other languages and emitting
+   * foreign stock-phrase hallucinations on silence. Empty/undefined = auto-detect.
+   */
+  transcriptionLanguage?: string;
 }
 
 export interface Timeouts {
@@ -44,6 +50,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     baseUrl: "https://api.groq.com/openai/v1",
     transcriptionModel: "whisper-large-v3",
     postProcessingModel: "openai/gpt-oss-20b",
+    transcriptionLanguage: "en",
   },
   timeouts: {
     transcriptionSeconds: 20,

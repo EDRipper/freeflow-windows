@@ -16,7 +16,7 @@ import {
   postProcessedTranscript,
 } from "./postprocess.js";
 import { runPipeline } from "./pipeline.js";
-import { parseTranscript } from "./transcription.js";
+import { parseTranscript, transcribe } from "./transcription.js";
 import {
   CooldownManager,
   fetchWithTimeout,
@@ -277,6 +277,40 @@ test("commandTransform returns the model replacement and strips wrapping quotes"
     cooldownManager: new CooldownManager(),
   });
   assert.equal(result, "Shortened.");
+});
+
+test("transcribe pins the configured language and temperature 0 to reduce hallucination", async () => {
+  let sentForm: FormData | undefined;
+  globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+    sentForm = init?.body as FormData;
+    return new Response(JSON.stringify({ text: "hello" }), { status: 200 });
+  }) as typeof fetch;
+
+  const cfg = baseConfig("openai/gpt-oss-20b");
+  await transcribe(
+    { audio: new ArrayBuffer(8), mimeType: "audio/webm", apiKey: "key" },
+    { ...cfg.provider, transcriptionLanguage: "en" },
+    cfg.timeouts,
+  );
+  assert.equal(sentForm?.get("language"), "en");
+  assert.equal(sentForm?.get("temperature"), "0");
+});
+
+test("transcribe omits language when none is configured (auto-detect)", async () => {
+  let sentForm: FormData | undefined;
+  globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+    sentForm = init?.body as FormData;
+    return new Response(JSON.stringify({ text: "hello" }), { status: 200 });
+  }) as typeof fetch;
+
+  const cfg = baseConfig("openai/gpt-oss-20b");
+  await transcribe(
+    { audio: new ArrayBuffer(8), mimeType: "audio/webm", apiKey: "key" },
+    { ...cfg.provider, transcriptionLanguage: undefined },
+    cfg.timeouts,
+  );
+  assert.equal(sentForm?.get("language"), null);
+  assert.equal(sentForm?.get("temperature"), "0");
 });
 
 test("runPipeline reports the debug fields: prompt preview and per-stage timings", async () => {
