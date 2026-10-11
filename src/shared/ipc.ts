@@ -13,6 +13,9 @@ export const IPC = {
   captureError: "capture:error",
   // renderer -> main: capture finished with nothing to transcribe (empty recording)
   captureEnded: "capture:ended",
+  // renderer -> main: dictation history for the settings window
+  getHistory: "history:get",
+  clearHistory: "history:clear",
   // main -> renderer (send)
   recordingStateChanged: "recording:state",
   startCapture: "capture:start",
@@ -29,6 +32,8 @@ export interface FreeflowBridge {
   isApiKeySet(): Promise<boolean>;
   setApiKey(key: string): Promise<void>;
   runPipeline(audio: ArrayBuffer, mimeType: string): Promise<import("./types").PipelineResult>;
+  getHistory(): Promise<import("./types").HistoryEntry[]>;
+  clearHistory(): Promise<void>;
   onStartCapture(cb: () => void): void;
   onStopCapture(cb: () => void): void;
   onRecordingState(cb: (state: import("./types").RecordingState) => void): void;

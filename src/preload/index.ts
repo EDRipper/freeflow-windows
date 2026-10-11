@@ -3,7 +3,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { IPC } from "../shared/ipc";
 import type { FreeflowBridge } from "../shared/ipc";
-import type { AppConfig, PipelineResult, RecordingState } from "../shared/types";
+import type { AppConfig, HistoryEntry, PipelineResult, RecordingState } from "../shared/types";
 
 const bridge: FreeflowBridge = {
   getConfig(): Promise<AppConfig> {
@@ -20,6 +20,12 @@ const bridge: FreeflowBridge = {
   },
   runPipeline(audio: ArrayBuffer, mimeType: string): Promise<PipelineResult> {
     return ipcRenderer.invoke(IPC.runPipeline, audio, mimeType);
+  },
+  getHistory(): Promise<HistoryEntry[]> {
+    return ipcRenderer.invoke(IPC.getHistory);
+  },
+  clearHistory(): Promise<void> {
+    return ipcRenderer.invoke(IPC.clearHistory);
   },
   onStartCapture(cb: () => void): void {
     ipcRenderer.on(IPC.startCapture, () => cb());

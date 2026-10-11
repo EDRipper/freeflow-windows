@@ -4,6 +4,7 @@ import path from "node:path";
 import { IPC } from "../shared/ipc";
 import { AppConfig, RecordingState } from "../shared/types";
 import { ConfigStore } from "./config";
+import { HistoryStore } from "./history";
 import { HotkeyEngine } from "./hotkey";
 import { registerIpcHandlers, MainContext } from "./ipc";
 import { OverlayController, overlayPaths } from "./overlay";
@@ -242,8 +243,11 @@ async function bootstrap(): Promise<void> {
   hotkey.on("start", () => beginRecording());
   hotkey.on("stop", () => endRecording());
 
+  const history = new HistoryStore(path.join(app.getPath("userData"), "history.json"));
+
   const ctx: MainContext = {
     config,
+    history,
     overlay,
     broadcast,
     onPipelineSettled,

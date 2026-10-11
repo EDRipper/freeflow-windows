@@ -1,14 +1,16 @@
 import { dialog, ipcMain, IpcMainInvokeEvent } from "electron";
 import { IPC } from "../shared/ipc";
-import { AppConfig, PipelineResult } from "../shared/types";
+import { AppConfig, HistoryEntry, PipelineResult } from "../shared/types";
 import { runEditMode, runPipeline } from "../core/pipeline";
 import { ConfigStore } from "./config";
+import { HistoryStore } from "./history";
 import { captureContext } from "./context";
 import { OverlayController } from "./overlay";
 import { getSelectedText, pasteText } from "./paste";
 
 export interface MainContext {
   config: ConfigStore;
+  history: HistoryStore;
   overlay: OverlayController;
   /** Push a message to every live renderer window. */
   broadcast(channel: string, payload?: unknown): void;
@@ -43,6 +45,10 @@ export function registerIpcHandlers(ctx: MainContext): void {
     ctx.config.setApiKey(key),
   );
 
+  ipcMain.handle(IPC.getHistory, (): Promise<HistoryEntry[]> => ctx.history.list());
+
+  ipcMain.handle(IPC.clearHistory, (): Promise<void> => ctx.history.clear());
+
   ipcMain.handle(
     IPC.runPipeline,
     async (_event: IpcMainInvokeEvent, audio: ArrayBuffer, mimeType: string): Promise<PipelineResult> => {
@@ -62,14 +68,31 @@ export function registerIpcHandlers(ctx: MainContext): void {
         // spoken command instead of pasting a fresh dictation. No selection means
         // there's nothing to edit, so fall through to ordinary dictation.
         const selection = config.editModeEnabled ? await getSelectedText() : "";
+        const editMode = Boolean(selection);
         const context = await captureContext(config.timeouts.contextRequestSeconds);
-        const result = selection
+        const result = editMode
           ? await runEditMode(audio, mimeType, apiKey, config, selection, context)
           : await runPipeline(audio, mimeType, apiKey, config, context);
-        if (result.cleanedText.trim().length > 0) {
+        const produced = result.cleanedText.trim().length > 0;
+        if (produced) {
           await pasteText(result.cleanedText);
         }
         ctx.onPipelineSettled(true);
+        // Record only dictations that produced text. A history write must never
+        // break the dictation itself, so failures are swallowed with a log.
+        if (produced) {
+          try {
+            await ctx.history.add({
+              rawTranscript: result.rawTranscript,
+              cleanedText: result.cleanedText,
+              model: config.provider.postProcessingModel,
+              durationMs: result.durationMs,
+              editMode,
+            });
+          } catch (historyError) {
+            console.error("Failed to record dictation history:", historyError);
+          }
+        }
         return result;
       } catch (error) {
         ctx.onPipelineSettled(false);

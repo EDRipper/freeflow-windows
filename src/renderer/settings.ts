@@ -1,5 +1,5 @@
 import { DEFAULT_CONFIG } from "../shared/types";
-import type { AppConfig, ShortcutBinding } from "../shared/types";
+import type { AppConfig, HistoryEntry, ShortcutBinding } from "../shared/types";
 
 // Settings controller. Loads the config into the form on open and writes it back
 // via setConfig on Save. The API key is write-only: we never read it back, only
@@ -30,6 +30,8 @@ const fields = {
   systemPrompt: el<HTMLTextAreaElement>("systemPrompt"),
   editMode: el<HTMLInputElement>("editMode"),
   launchAtLogin: el<HTMLInputElement>("launchAtLogin"),
+  historyList: el<HTMLUListElement>("historyList"),
+  historyClear: el<HTMLButtonElement>("historyClear"),
   save: el<HTMLButtonElement>("save"),
   saveStatus: el<HTMLSpanElement>("saveStatus"),
   captureOverlay: el<HTMLDivElement>("captureOverlay"),
@@ -368,6 +370,103 @@ async function saveConfig(): Promise<void> {
   }
 }
 
+// --- History -----------------------------------------------------------------
+
+const relativeTime = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+
+// Coarse relative label ("2 minutes ago", "yesterday") for an entry timestamp.
+function formatRelative(timestamp: number): string {
+  const diffSec = Math.round((timestamp - Date.now()) / 1000);
+  const abs = Math.abs(diffSec);
+  if (abs < 60) return relativeTime.format(diffSec, "second");
+  const diffMin = Math.round(diffSec / 60);
+  if (Math.abs(diffMin) < 60) return relativeTime.format(diffMin, "minute");
+  const diffHour = Math.round(diffMin / 60);
+  if (Math.abs(diffHour) < 24) return relativeTime.format(diffHour, "hour");
+  return relativeTime.format(Math.round(diffHour / 24), "day");
+}
+
+function renderHistory(entries: HistoryEntry[]): void {
+  fields.historyList.replaceChildren();
+  fields.historyClear.disabled = entries.length === 0;
+
+  for (const entry of entries) {
+    const item = document.createElement("li");
+    item.className = "history-item";
+
+    const body = document.createElement("div");
+    body.className = "history-body";
+
+    const text = document.createElement("p");
+    text.className = "history-text";
+    text.textContent = entry.cleanedText;
+
+    const meta = document.createElement("div");
+    meta.className = "history-meta";
+
+    const when = document.createElement("span");
+    when.className = "history-time";
+    when.textContent = formatRelative(entry.timestamp);
+    // Exact time on hover; the label itself stays coarse.
+    when.title = new Date(entry.timestamp).toLocaleString();
+
+    const model = document.createElement("span");
+    model.className = "history-model";
+    model.textContent = entry.model;
+
+    meta.append(when, model);
+    if (entry.editMode) {
+      const tag = document.createElement("span");
+      tag.className = "history-tag";
+      tag.textContent = "Edit mode";
+      meta.append(tag);
+    }
+
+    body.append(text, meta);
+
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "btn history-copy";
+    copy.textContent = "Copy";
+    copy.setAttribute("aria-label", "Copy this dictation");
+    copy.addEventListener("click", () => void copyEntry(entry.cleanedText));
+
+    item.append(body, copy);
+    fields.historyList.append(item);
+  }
+}
+
+async function copyEntry(textValue: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(textValue);
+    flash("Copied to clipboard.", "ok");
+  } catch {
+    flash("Could not copy to clipboard.", "err");
+  }
+}
+
+async function loadHistory(): Promise<void> {
+  try {
+    renderHistory(await window.freeflow.getHistory());
+  } catch {
+    renderHistory([]);
+    flash("Could not load history.", "err");
+  }
+}
+
+async function clearHistory(): Promise<void> {
+  if (!window.confirm("Clear all dictation history? This cannot be undone.")) return;
+  fields.historyClear.disabled = true;
+  try {
+    await window.freeflow.clearHistory();
+    renderHistory([]);
+    flash("History cleared.", "ok");
+  } catch {
+    fields.historyClear.disabled = false;
+    flash("Could not clear history.", "err");
+  }
+}
+
 // --- Wiring ------------------------------------------------------------------
 
 function wire(): void {
@@ -412,6 +511,8 @@ function wire(): void {
     }
   });
 
+  fields.historyClear.addEventListener("click", () => void clearHistory());
+
   fields.save.addEventListener("click", () => void saveConfig());
   // Ctrl/Cmd+S saves from anywhere in the window.
   window.addEventListener("keydown", (event) => {
@@ -435,6 +536,7 @@ async function init(): Promise<void> {
     flash("Could not load settings; showing defaults.", "err");
   }
   await refreshKeyStatus();
+  await loadHistory();
   if (document.body.classList.contains("needs-key")) fields.apiKey.focus();
 }
 

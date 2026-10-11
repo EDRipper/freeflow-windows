@@ -78,3 +78,20 @@ export interface PipelineResult {
 }
 
 export type RecordingState = "idle" | "recording" | "transcribing" | "error";
+
+/**
+ * One persisted dictation, kept in userData/history.json. Ported from the macOS
+ * app's PipelineHistoryItem, trimmed to the fields the Windows UI surfaces.
+ * `timestamp` is epoch milliseconds so it serializes cleanly and the renderer can
+ * format it relative to now. `editMode` marks entries produced by Edit Mode (a
+ * spoken command transforming a selection) rather than plain dictation.
+ */
+export interface HistoryEntry {
+  id: string;
+  timestamp: number;
+  rawTranscript: string;
+  cleanedText: string;
+  model: string;
+  durationMs: number;
+  editMode: boolean;
+}
