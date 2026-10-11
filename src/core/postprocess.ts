@@ -6,8 +6,8 @@
 
 import type { AppContext, ProviderConfig, Timeouts } from "../shared/types.js";
 import {
-  DEFAULT_POST_PROCESSING_FALLBACK_MODEL,
   DEFAULT_POST_PROCESSING_MODEL,
+  KNOWN_GOOD_POST_PROCESSING_MODELS,
   modelConfig,
   stripThinkTags,
 } from "./models.js";
@@ -168,7 +168,8 @@ function shouldFallback(error: unknown): boolean {
   if (error instanceof RateLimitedError) return true;
   if (error instanceof EmptyOutputError) return true;
   if (error instanceof SuspectedInstructionExecutionError) return true;
-  if (error instanceof HttpError) return error.status === 429;
+  // 404 == model-not-found (a retired/invalid model id): try a known-good one.
+  if (error instanceof HttpError) return error.status === 429 || error.status === 404;
   return false;
 }
 
@@ -178,15 +179,9 @@ function resolvedPrimaryModel(preferred: string): string {
 }
 
 function resolvedRetryModel(primary: string): string | null {
-  // PostProcessingService.resolvedRetryModel with an empty preferred-fallback:
-  // swap between the two built-in defaults, otherwise no distinct retry model.
-  if (primary === DEFAULT_POST_PROCESSING_MODEL) {
-    return DEFAULT_POST_PROCESSING_FALLBACK_MODEL;
-  }
-  if (primary === DEFAULT_POST_PROCESSING_FALLBACK_MODEL) {
-    return DEFAULT_POST_PROCESSING_MODEL;
-  }
-  return null;
+  // Fall back to the first known-good Groq model that isn't the primary, so a
+  // configured model that Groq rejects (404) self-heals instead of just failing.
+  return KNOWN_GOOD_POST_PROCESSING_MODELS.find((model) => model !== primary) ?? null;
 }
 
 async function process(
@@ -245,7 +240,11 @@ async function process(
       throw new RateLimitedError(model, cooldown.seconds);
     }
     const body = await response.text();
-    throw new HttpError(response.status, body, `Post-processing failed with status ${response.status}`);
+    throw new HttpError(
+      response.status,
+      body,
+      `Post-processing failed (${response.status}, model ${model}): ${apiErrorMessage(body)}`,
+    );
   }
 
   const content = extractContent(await response.text());
@@ -263,6 +262,21 @@ async function process(
     throw new SuspectedInstructionExecutionError();
   }
   return sanitized;
+}
+
+/** Pull the human-readable message out of an OpenAI/Groq-style error body. */
+function apiErrorMessage(body: string): string {
+  try {
+    const json = JSON.parse(body) as { error?: { message?: unknown } };
+    const message = json.error?.message;
+    if (typeof message === "string" && message.trim()) {
+      return message.trim();
+    }
+  } catch {
+    /* fall through to the raw body */
+  }
+  const trimmed = body.trim();
+  return trimmed ? trimmed.slice(0, 300) : "no error detail";
 }
 
 function extractContent(body: string): string {
@@ -612,7 +626,11 @@ async function processCommand(
       throw new RateLimitedError(model, cooldown.seconds);
     }
     const body = await response.text();
-    throw new HttpError(response.status, body, `Command transform failed with status ${response.status}`);
+    throw new HttpError(
+      response.status,
+      body,
+      `Command transform failed (${response.status}, model ${model}): ${apiErrorMessage(body)}`,
+    );
   }
 
   let content = extractContent(await response.text());

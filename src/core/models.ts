@@ -10,9 +10,17 @@ export interface ModelConfig {
 }
 
 // Default post-processing models used when the user hasn't picked one.
-// ModelConfiguration.swift / PostProcessingService.swift.
+// Both are confirmed-available Groq production chat models (console.groq.com/docs/models).
 export const DEFAULT_POST_PROCESSING_MODEL = "openai/gpt-oss-20b";
-export const DEFAULT_POST_PROCESSING_FALLBACK_MODEL = "qwen/qwen3.6-27b";
+export const DEFAULT_POST_PROCESSING_FALLBACK_MODEL = "llama-3.1-8b-instant";
+
+// Known-good Groq chat models to fall back to when the configured post-processing
+// model is rejected (e.g. a 404 model-not-found after Groq retires a model id).
+export const KNOWN_GOOD_POST_PROCESSING_MODELS = [
+  "openai/gpt-oss-20b",
+  "llama-3.1-8b-instant",
+  "llama-3.3-70b-versatile",
+];
 
 // ModelConfiguration.llmModels
 export const LLM_MODELS = [

@@ -43,7 +43,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   provider: {
     baseUrl: "https://api.groq.com/openai/v1",
     transcriptionModel: "whisper-large-v3",
-    postProcessingModel: "llama-3.3-70b-versatile",
+    postProcessingModel: "openai/gpt-oss-20b",
   },
   timeouts: {
     transcriptionSeconds: 20,

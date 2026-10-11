@@ -342,3 +342,34 @@ test("cleanup registers a cooldown on 429 and retries the fallback model", async
   assert.equal(calls, 2);
   assert.equal(breaker.isInCooldown("openai/gpt-oss-20b"), true);
 });
+
+test("cleanup falls back to a known-good model when the configured one 404s", async () => {
+  let calls = 0;
+  const seenModels: string[] = [];
+  globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+    calls += 1;
+    seenModels.push(JSON.parse(String(init?.body)).model);
+    if (calls === 1) {
+      return new Response(
+        JSON.stringify({ error: { message: "The model `bogus-model` does not exist" } }),
+        { status: 404 },
+      );
+    }
+    return chatResponse("Cleaned by the fallback model.");
+  }) as typeof fetch;
+
+  const cfg = baseConfig("bogus-model"); // a model Groq will reject
+  const result = await cleanup("needs cleanup", {
+    provider: cfg.provider,
+    timeouts: cfg.timeouts,
+    apiKey: "key",
+    vocabulary: [],
+    customSystemPrompt: "",
+    cooldownManager: new CooldownManager(),
+  });
+
+  assert.equal(result, "Cleaned by the fallback model.");
+  assert.equal(calls, 2);
+  assert.equal(seenModels[0], "bogus-model");
+  assert.notEqual(seenModels[1], "bogus-model"); // retried on a different, known-good model
+});
