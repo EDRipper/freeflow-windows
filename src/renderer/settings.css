@@ -151,6 +151,7 @@ body {
 
 input[type="text"],
 input[type="password"],
+input[type="number"],
 textarea {
   width: 300px;
   max-width: 100%;
@@ -161,6 +162,10 @@ textarea {
   border: 1px solid var(--field-border);
   border-radius: var(--radius);
   outline: none;
+}
+
+.num {
+  width: 110px;
 }
 
 .row.stack input[type="text"],

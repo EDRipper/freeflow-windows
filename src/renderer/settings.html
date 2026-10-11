@@ -72,6 +72,51 @@
         </div>
       </section>
 
+      <section class="group" aria-labelledby="h-advanced">
+        <h2 id="h-advanced">Advanced</h2>
+
+        <div class="row">
+          <div class="row-text">
+            <label for="transcriptionBaseUrl">Transcription API URL</label>
+            <p class="hint">Optional. Use a separate endpoint for transcription (e.g. a local server). Leave blank to use the Base URL.</p>
+          </div>
+          <div class="row-control stack-control">
+            <input id="transcriptionBaseUrl" type="text" spellcheck="false" class="mono" placeholder="Same as Base URL" aria-describedby="transcriptionBaseUrlError" />
+            <p id="transcriptionBaseUrlError" class="field-error" role="alert" hidden></p>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="row-text">
+            <label for="timeoutTranscription">Transcription timeout</label>
+            <p class="hint">Seconds to wait for a transcription response. Raise it for slow local models.</p>
+          </div>
+          <div class="row-control">
+            <input id="timeoutTranscription" type="number" min="1" step="1" inputmode="numeric" class="num" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="row-text">
+            <label for="timeoutPostProcessing">Post-processing timeout</label>
+            <p class="hint">Seconds to wait for a cleanup / edit-mode response.</p>
+          </div>
+          <div class="row-control">
+            <input id="timeoutPostProcessing" type="number" min="1" step="1" inputmode="numeric" class="num" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="row-text">
+            <label for="timeoutContext">Context timeout</label>
+            <p class="hint">Seconds to wait when reading the active app for context.</p>
+          </div>
+          <div class="row-control">
+            <input id="timeoutContext" type="number" min="1" step="1" inputmode="numeric" class="num" />
+          </div>
+        </div>
+      </section>
+
       <section class="group" aria-labelledby="h-shortcuts">
         <h2 id="h-shortcuts">Shortcuts</h2>
 

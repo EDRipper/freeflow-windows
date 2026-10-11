@@ -20,6 +20,11 @@ const fields = {
   baseUrlError: el<HTMLParagraphElement>("baseUrlError"),
   transcriptionModel: el<HTMLInputElement>("transcriptionModel"),
   postProcessingModel: el<HTMLInputElement>("postProcessingModel"),
+  transcriptionBaseUrl: el<HTMLInputElement>("transcriptionBaseUrl"),
+  transcriptionBaseUrlError: el<HTMLParagraphElement>("transcriptionBaseUrlError"),
+  timeoutTranscription: el<HTMLInputElement>("timeoutTranscription"),
+  timeoutPostProcessing: el<HTMLInputElement>("timeoutPostProcessing"),
+  timeoutContext: el<HTMLInputElement>("timeoutContext"),
   holdDisplay: el<HTMLElement>("holdDisplay"),
   holdRecord: el<HTMLButtonElement>("holdRecord"),
   toggleDisplay: el<HTMLElement>("toggleDisplay"),
@@ -45,9 +50,6 @@ const fields = {
 let holdShortcut: ShortcutBinding = structuredClone(DEFAULT_CONFIG.holdShortcut);
 let toggleShortcut: ShortcutBinding = structuredClone(DEFAULT_CONFIG.toggleShortcut);
 let vocabulary: string[] = [];
-// Preserved verbatim across edits since the UI does not expose them.
-let timeouts = structuredClone(DEFAULT_CONFIG.timeouts);
-let transcriptionBaseUrl: string | undefined;
 
 // --- Key event -> binding identifier (mapped from uiohook-napi in the main process) ---
 
@@ -285,13 +287,21 @@ function baseUrlProblem(value: string): string | null {
   return null;
 }
 
-function validateBaseUrl(): boolean {
-  const problem = baseUrlProblem(fields.baseUrl.value);
-  fields.baseUrlError.textContent = problem ?? "";
-  fields.baseUrlError.hidden = problem === null;
-  fields.baseUrl.classList.toggle("invalid", problem !== null);
-  fields.baseUrl.setAttribute("aria-invalid", problem !== null ? "true" : "false");
+function validateUrlField(input: HTMLInputElement, errorEl: HTMLElement): boolean {
+  const problem = baseUrlProblem(input.value);
+  errorEl.textContent = problem ?? "";
+  errorEl.hidden = problem === null;
+  input.classList.toggle("invalid", problem !== null);
+  input.setAttribute("aria-invalid", problem !== null ? "true" : "false");
   return problem === null;
+}
+
+function validateBaseUrl(): boolean {
+  return validateUrlField(fields.baseUrl, fields.baseUrlError);
+}
+
+function validateTranscriptionBaseUrl(): boolean {
+  return validateUrlField(fields.transcriptionBaseUrl, fields.transcriptionBaseUrlError);
 }
 
 // --- Load / save -------------------------------------------------------------
@@ -300,8 +310,10 @@ function applyConfig(config: AppConfig): void {
   fields.baseUrl.value = config.provider.baseUrl;
   fields.transcriptionModel.value = config.provider.transcriptionModel;
   fields.postProcessingModel.value = config.provider.postProcessingModel;
-  transcriptionBaseUrl = config.provider.transcriptionBaseUrl;
-  timeouts = config.timeouts;
+  fields.transcriptionBaseUrl.value = config.provider.transcriptionBaseUrl ?? "";
+  fields.timeoutTranscription.value = String(config.timeouts.transcriptionSeconds);
+  fields.timeoutPostProcessing.value = String(config.timeouts.postProcessingSeconds);
+  fields.timeoutContext.value = String(config.timeouts.contextRequestSeconds);
   holdShortcut = config.holdShortcut;
   toggleShortcut = config.toggleShortcut;
   vocabulary = [...config.vocabulary];
@@ -311,6 +323,14 @@ function applyConfig(config: AppConfig): void {
   renderShortcuts();
   renderVocabulary();
   validateBaseUrl();
+  validateTranscriptionBaseUrl();
+}
+
+// Only positive values are accepted; anything else falls back to the default,
+// matching the macOS app's timeout handling.
+function positiveTimeout(raw: string, fallback: number): number {
+  const value = Number.parseFloat(raw);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
 function collectConfig(): AppConfig {
@@ -327,11 +347,16 @@ function collectConfig(): AppConfig {
     transcriptionModel: fields.transcriptionModel.value.trim(),
     postProcessingModel: fields.postProcessingModel.value.trim(),
   };
+  const transcriptionBaseUrl = fields.transcriptionBaseUrl.value.trim();
   if (transcriptionBaseUrl) provider.transcriptionBaseUrl = transcriptionBaseUrl;
 
   return {
     provider,
-    timeouts,
+    timeouts: {
+      transcriptionSeconds: positiveTimeout(fields.timeoutTranscription.value, DEFAULT_CONFIG.timeouts.transcriptionSeconds),
+      postProcessingSeconds: positiveTimeout(fields.timeoutPostProcessing.value, DEFAULT_CONFIG.timeouts.postProcessingSeconds),
+      contextRequestSeconds: positiveTimeout(fields.timeoutContext.value, DEFAULT_CONFIG.timeouts.contextRequestSeconds),
+    },
     holdShortcut,
     toggleShortcut,
     vocabulary,
@@ -356,6 +381,11 @@ function flash(message: string, kind: "ok" | "err"): void {
 async function saveConfig(): Promise<void> {
   if (!validateBaseUrl()) {
     fields.baseUrl.focus();
+    flash("Fix the highlighted field before saving.", "err");
+    return;
+  }
+  if (!validateTranscriptionBaseUrl()) {
+    fields.transcriptionBaseUrl.focus();
     flash("Fix the highlighted field before saving.", "err");
     return;
   }
@@ -480,11 +510,23 @@ function wire(): void {
     if (!fields.baseUrlError.hidden) validateBaseUrl();
   });
   fields.baseUrl.addEventListener("blur", () => validateBaseUrl());
+  fields.transcriptionBaseUrl.addEventListener("input", () => {
+    if (!fields.transcriptionBaseUrlError.hidden) validateTranscriptionBaseUrl();
+  });
+  fields.transcriptionBaseUrl.addEventListener("blur", () => validateTranscriptionBaseUrl());
 
   // Enter on a single-line provider field commits the whole form, matching the
   // macOS app where return saves. The textarea and vocab input are excluded:
   // the textarea needs newlines, and vocab's Enter adds an entry.
-  for (const input of [fields.baseUrl, fields.transcriptionModel, fields.postProcessingModel]) {
+  for (const input of [
+    fields.baseUrl,
+    fields.transcriptionModel,
+    fields.postProcessingModel,
+    fields.transcriptionBaseUrl,
+    fields.timeoutTranscription,
+    fields.timeoutPostProcessing,
+    fields.timeoutContext,
+  ]) {
     input.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
