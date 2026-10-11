@@ -34,16 +34,21 @@ The macOS original uses AppKit/SwiftUI, a `CGEventTap` global hotkey, the Access
 
 ## Parity checklist
 
-- [ ] Transcription + cleanup pipeline
-- [ ] Global hold-to-talk and toggle shortcuts
-- [ ] Audio capture + live level overlay
-- [ ] Clipboard-preserving paste
-- [ ] Settings (provider, models, shortcuts, vocabulary, custom prompt)
-- [ ] Encrypted API key storage
-- [ ] Windows installer + CI release
+- [x] Transcription + cleanup pipeline
+- [x] Global hold-to-talk and toggle shortcuts
+- [x] Audio capture + live level overlay
+- [x] Clipboard-preserving paste
+- [x] Settings (provider, models, shortcuts, vocabulary, custom prompt)
+- [x] Encrypted API key storage
+- [x] Windows installer + CI release
 - [x] Edit mode (transform a selection by a spoken command)
 - [x] Nearby-app context capture (active app + window title)
 - [x] Auto-update (electron-updater against GitHub releases)
+- [ ] Dictation history (recent transcripts, view + copy + clear)
+- [ ] Pipeline debug view (raw transcript, cleaned text, prompt, timings)
+- [ ] Timeouts + local/self-hosted model settings in the UI
+- [ ] Offline / network-status awareness
+- [ ] Realtime (streaming) transcription
 
 ## License
 
