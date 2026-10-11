@@ -392,6 +392,51 @@ textarea {
   color: var(--text-dim);
 }
 
+.history-details {
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.history-details > summary {
+  cursor: pointer;
+  width: fit-content;
+  color: var(--text-dim);
+  user-select: none;
+}
+
+.debug-block {
+  margin-top: 8px;
+}
+
+.debug-label {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.debug-pre {
+  margin: 0;
+  max-height: 180px;
+  overflow: auto;
+  padding: 8px 10px;
+  font-family: "Cascadia Code", "Consolas", ui-monospace, monospace;
+  font-size: 11.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.history-timings {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
 .history-copy {
   flex: 0 0 auto;
   padding: 4px 12px;

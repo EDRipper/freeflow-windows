@@ -75,6 +75,11 @@ export interface PipelineResult {
   rawTranscript: string;
   cleanedText: string;
   durationMs: number;
+  /** Debug detail: the exact prompt sent to the cleanup/command model. */
+  prompt?: string;
+  /** Debug detail: time spent in transcription vs cleanup, in milliseconds. */
+  transcribeMs?: number;
+  cleanupMs?: number;
 }
 
 export type RecordingState = "idle" | "recording" | "transcribing" | "error";
@@ -94,4 +99,8 @@ export interface HistoryEntry {
   model: string;
   durationMs: number;
   editMode: boolean;
+  /** Debug detail (optional for older entries): prompt sent and per-stage timings. */
+  prompt?: string;
+  transcribeMs?: number;
+  cleanupMs?: number;
 }

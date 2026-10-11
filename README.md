@@ -45,7 +45,7 @@ The macOS original uses AppKit/SwiftUI, a `CGEventTap` global hotkey, the Access
 - [x] Nearby-app context capture (active app + window title)
 - [x] Auto-update (electron-updater against GitHub releases)
 - [x] Dictation history (recent transcripts, view + copy + clear)
-- [ ] Pipeline debug view (raw transcript, cleaned text, prompt, timings)
+- [x] Pipeline debug view (raw transcript, cleaned text, prompt, timings)
 - [x] Timeouts + local/self-hosted model settings in the UI
 - [x] Offline / network-status awareness
 - [ ] Realtime (streaming) transcription

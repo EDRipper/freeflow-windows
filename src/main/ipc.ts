@@ -89,6 +89,9 @@ export function registerIpcHandlers(ctx: MainContext): void {
               model: config.provider.postProcessingModel,
               durationMs: result.durationMs,
               editMode,
+              prompt: result.prompt,
+              transcribeMs: result.transcribeMs,
+              cleanupMs: result.cleanupMs,
             });
           } catch (historyError) {
             console.error("Failed to record dictation history:", historyError);

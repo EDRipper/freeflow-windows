@@ -15,6 +15,7 @@ import {
   DEFAULT_SYSTEM_PROMPT,
   postProcessedTranscript,
 } from "./postprocess.js";
+import { runPipeline } from "./pipeline.js";
 import { parseTranscript } from "./transcription.js";
 import {
   CooldownManager,
@@ -276,6 +277,24 @@ test("commandTransform returns the model replacement and strips wrapping quotes"
     cooldownManager: new CooldownManager(),
   });
   assert.equal(result, "Shortened.");
+});
+
+test("runPipeline reports the debug fields: prompt preview and per-stage timings", async () => {
+  globalThis.fetch = (async (url: string) => {
+    if (String(url).includes("/audio/transcriptions")) {
+      return new Response(JSON.stringify({ text: "hello there" }), { status: 200 });
+    }
+    return chatResponse("Hello there.");
+  }) as typeof fetch;
+
+  const cfg = baseConfig("openai/gpt-oss-20b");
+  const result = await runPipeline(new ArrayBuffer(8), "audio/webm", "key", cfg);
+
+  assert.equal(result.cleanedText, "Hello there.");
+  assert.equal(typeof result.transcribeMs, "number");
+  assert.equal(typeof result.cleanupMs, "number");
+  assert.match(result.prompt ?? "", /\[system\]/);
+  assert.match(result.prompt ?? "", /hello there/); // the raw transcript is in the user prompt
 });
 
 function baseConfig(postProcessingModel: string): AppConfig {

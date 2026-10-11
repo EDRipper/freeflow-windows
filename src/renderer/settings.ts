@@ -416,6 +416,50 @@ function formatRelative(timestamp: number): string {
   return relativeTime.format(Math.round(diffHour / 24), "day");
 }
 
+// A collapsible debug panel for one history entry: raw transcript, the exact
+// prompt sent to the model, and per-stage timings. Mirrors the macOS pipeline
+// debug view, folded into the history list so it is there when you want it.
+function buildDebugDetails(entry: HistoryEntry): HTMLDetailsElement {
+  const details = document.createElement("details");
+  details.className = "history-details";
+
+  const summary = document.createElement("summary");
+  summary.textContent = "Details";
+  details.append(summary);
+
+  details.append(debugBlock("Raw transcript", entry.rawTranscript || "(empty)"));
+  if (entry.prompt) {
+    details.append(debugBlock("Prompt sent", entry.prompt));
+  }
+
+  const timings = document.createElement("p");
+  timings.className = "history-timings";
+  const parts = [`total ${formatMs(entry.durationMs)}`];
+  if (entry.transcribeMs !== undefined) parts.push(`transcribe ${formatMs(entry.transcribeMs)}`);
+  if (entry.cleanupMs !== undefined) parts.push(`cleanup ${formatMs(entry.cleanupMs)}`);
+  timings.textContent = parts.join("  •  ");
+  details.append(timings);
+
+  return details;
+}
+
+function debugBlock(label: string, value: string): HTMLDivElement {
+  const block = document.createElement("div");
+  block.className = "debug-block";
+  const heading = document.createElement("span");
+  heading.className = "debug-label";
+  heading.textContent = label;
+  const pre = document.createElement("pre");
+  pre.className = "debug-pre";
+  pre.textContent = value;
+  block.append(heading, pre);
+  return block;
+}
+
+function formatMs(ms: number): string {
+  return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`;
+}
+
 function renderHistory(entries: HistoryEntry[]): void {
   fields.historyList.replaceChildren();
   fields.historyClear.disabled = entries.length === 0;
@@ -452,7 +496,7 @@ function renderHistory(entries: HistoryEntry[]): void {
       meta.append(tag);
     }
 
-    body.append(text, meta);
+    body.append(text, meta, buildDebugDetails(entry));
 
     const copy = document.createElement("button");
     copy.type = "button";
