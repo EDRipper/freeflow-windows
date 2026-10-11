@@ -48,7 +48,7 @@ The macOS original uses AppKit/SwiftUI, a `CGEventTap` global hotkey, the Access
 - [x] Pipeline debug view (raw transcript, cleaned text, prompt, timings)
 - [x] Timeouts + local/self-hosted model settings in the UI
 - [x] Offline / network-status awareness
-- [ ] Realtime (streaming) transcription
+- [~] Realtime (streaming) transcription - protocol state machine ported + unit-tested (src/core/realtime.ts); UI/capture wiring + a realtime-capable provider (OpenAI, not Groq) needed to finish
 
 ## License
 
