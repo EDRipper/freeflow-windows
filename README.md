@@ -5,7 +5,7 @@
 <h1 align="center">FreeFlow for Windows</h1>
 
 <p align="center">
-  The Windows port of FreeFlow, a free and open source alternative to <a href="https://wisprflow.ai/">Wispr Flow</a>, <a href="https://superwhisper.com/">Superwhisper</a>, and <a href="https://monologue.to/">Monologue</a>.
+  The Windows port of <a href="https://freeflow.zachlatta.com/">FreeFlow</a>, a free and open source alternative to <a href="https://wisprflow.ai/">Wispr Flow</a>, <a href="https://superwhisper.com/">Superwhisper</a>, and <a href="https://monologue.to/">Monologue</a>.
 </p>
 
 <p align="center">
@@ -74,3 +74,10 @@ Releases are built on `windows-latest` via GitHub Actions and attached to tagged
 ## License
 
 Licensed under the MIT license, same as upstream FreeFlow.
+
+---
+
+<p align="center">
+  Thank you to <a href="https://github.com/zachlatta">@zachlatta</a> and the <a href="https://github.com/zachlatta/freeflow">FreeFlow</a> project for the original app that made this port possible.
+</p>
+
