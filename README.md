@@ -16,7 +16,7 @@
 ---
 
 <p align="center">
-  <img src="resources/demo.gif" alt="FreeFlow demo" width="600">
+  <img src="resources/demo.gif" alt="FreeFlow demo" width="834">
 </p>
 
 <p align="center">
