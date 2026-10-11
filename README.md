@@ -48,6 +48,10 @@ FreeFlow lives in the system tray. Both shortcuts are customizable in settings.
 
 Edit Mode lets you highlight existing text and transform it with a spoken instruction, like "make this shorter" or "turn this into bullets." Enable it in settings, then use your normal dictation shortcut while text is selected.
 
+<p align="center">
+  <img src="resources/edit-mode.gif" alt="FreeFlow Edit Mode demo" width="100%">
+</p>
+
 ## Privacy
 
 There is no FreeFlow server, so FreeFlow does not store or retain your data on a server. The only information that leaves your computer are the API calls to your configured transcription and LLM provider. Your API key is stored encrypted on your machine (Windows DPAPI), and dictation history is kept locally.
