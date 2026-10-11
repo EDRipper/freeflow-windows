@@ -1,7 +1,8 @@
-import { dialog, ipcMain, IpcMainInvokeEvent } from "electron";
+import { dialog, ipcMain, IpcMainInvokeEvent, net } from "electron";
 import { IPC } from "../shared/ipc";
 import { AppConfig, HistoryEntry, PipelineResult } from "../shared/types";
 import { runEditMode, runPipeline } from "../core/pipeline";
+import { HttpError, networkErrorMessage } from "../core/transport";
 import { ConfigStore } from "./config";
 import { HistoryStore } from "./history";
 import { captureContext } from "./context";
@@ -96,8 +97,15 @@ export function registerIpcHandlers(ctx: MainContext): void {
         return result;
       } catch (error) {
         ctx.onPipelineSettled(false);
-        const message = error instanceof Error ? error.message : String(error);
-        showErrorDialog("FreeFlow: transcription failed", message);
+        // Keep the detailed server body for real HTTP errors (it names the model /
+        // reason); map network/timeout failures to a plain "you're offline" line
+        // instead of a cryptic "fetch failed".
+        const isNetwork = !(error instanceof HttpError);
+        const message =
+          error instanceof HttpError
+            ? error.message
+            : networkErrorMessage(error, net.isOnline());
+        showErrorDialog(isNetwork ? "FreeFlow: can't reach the server" : "FreeFlow: transcription failed", message);
         throw error;
       }
     },

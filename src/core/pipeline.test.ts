@@ -19,6 +19,7 @@ import { parseTranscript } from "./transcription.js";
 import {
   CooldownManager,
   fetchWithTimeout,
+  networkErrorMessage,
   normalizeBaseUrl,
   parseGroqDuration,
   rateLimitCooldown,
@@ -195,6 +196,18 @@ test("CooldownManager persists daily-threshold cooldowns separately", () => {
 });
 
 // --- transport with mocked fetch (no real network) ---------------------------
+
+test("networkErrorMessage maps a node fetch failure (cause ENOTFOUND) to an offline message", () => {
+  const err = new TypeError("fetch failed");
+  (err as { cause?: unknown }).cause = new Error("getaddrinfo ENOTFOUND api.groq.com");
+  const msg = networkErrorMessage(err, false);
+  assert.match(msg, /connection|reached/i);
+  assert.doesNotMatch(msg, /fetch failed/i);
+});
+
+test("networkErrorMessage passes a non-network error message through unchanged", () => {
+  assert.equal(networkErrorMessage(new Error("Invalid JSON from server"), true), "Invalid JSON from server");
+});
 
 test("normalizeBaseUrl trims trailing slashes and validates scheme", () => {
   assert.equal(normalizeBaseUrl("https://api.groq.com/openai/v1/"), "https://api.groq.com/openai/v1");

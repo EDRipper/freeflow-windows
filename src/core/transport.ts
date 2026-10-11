@@ -134,7 +134,21 @@ export function networkErrorMessage(error: unknown, isOnline: boolean): string {
   if (error instanceof HttpError) {
     return error.friendlyMessage;
   }
-  const lower = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  // Node's fetch throws a terse "fetch failed" and stashes the real DNS/socket
+  // error (ENOTFOUND, ECONNREFUSED, ...) on error.cause, so fold that in too.
+  const parts: string[] = [];
+  if (error instanceof Error) {
+    parts.push(error.message);
+    const cause = (error as { cause?: unknown }).cause;
+    if (cause instanceof Error) {
+      parts.push(cause.message);
+    } else if (typeof cause === "string") {
+      parts.push(cause);
+    }
+  } else {
+    parts.push(String(error));
+  }
+  const lower = parts.join(" ").toLowerCase();
   if (lower.includes("timed out") || lower.includes("timeout")) {
     return isOnline ? "Request timed out — try again" : "No internet — check connection";
   }
@@ -144,11 +158,14 @@ export function networkErrorMessage(error: unknown, isOnline: boolean): string {
     lower.includes("not connected") ||
     lower.includes("network") ||
     lower.includes("failed to fetch") ||
+    lower.includes("fetch failed") ||
     lower.includes("enotfound") ||
     lower.includes("econnrefused") ||
-    lower.includes("cannot find host")
+    lower.includes("eai_again") ||
+    lower.includes("cannot find host") ||
+    lower.includes("getaddrinfo")
   ) {
-    return "No internet — check connection";
+    return "No internet connection, or the server could not be reached. Check your connection and try again.";
   }
   return error instanceof Error ? error.message : String(error);
 }
